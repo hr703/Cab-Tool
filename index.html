@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cuemath Cab Service</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0D0D0D; color: #E0E0E0; font-family: 'Inter', sans-serif; min-height: 100vh; }
+  :root { --gold: #FFBA07; --bg: #0D0D0D; --card: #191919; --border: #2A2A2A; --text: #E0E0E0; --muted: #888; }
+
+  /* Login */
+  #login-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
+  .login-box { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:40px; text-align:center; width:360px; }
+  .login-box h1 { font-size:22px; color:var(--gold); margin-bottom:6px; }
+  .login-box p { color:var(--muted); font-size:13px; margin-bottom:28px; }
+  .g-signin-btn { background:#fff; color:#333; border:none; border-radius:8px; padding:12px 20px; font-size:14px; font-weight:600; cursor:pointer; width:100%; display:flex; align-items:center; justify-content:center; gap:10px; }
+  .g-signin-btn:hover { background:#f5f5f5; }
+  .g-signin-btn img { width:20px; }
+
+  /* App */
+  #app { display:none; }
+  header { background:var(--card); border-bottom:1px solid var(--border); padding:0 24px; display:flex; align-items:center; justify-content:space-between; height:56px; }
+  header .logo { font-size:16px; font-weight:700; color:var(--gold); }
+  header .user-info { font-size:13px; color:var(--muted); display:flex; align-items:center; gap:12px; }
+  .logout-btn { background:transparent; border:1px solid var(--border); color:var(--muted); padding:5px 12px; border-radius:6px; cursor:pointer; font-size:12px; }
+  .logout-btn:hover { border-color:var(--gold); color:var(--gold); }
+
+  /* Tabs */
+  .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); background:var(--card); padding:0 24px; }
+  .tab { padding:14px 20px; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; }
+  .tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+  .tab:hover:not(.active) { color:var(--text); }
+
+  .content { padding:24px; max-width:1100px; margin:0 auto; }
+
+  /* Cards */
+  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:16px; }
+  .card-title { font-size:14px; font-weight:600; color:var(--gold); margin-bottom:16px; }
+
+  /* My Plan */
+  .plan-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:12px; }
+  .plan-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .plan-date { font-size:13px; font-weight:600; color:var(--gold); }
+  .route-badge { background:#FFBA0720; color:var(--gold); padding:3px 10px; border-radius:12px; font-size:11px; font-weight:600; }
+  .plan-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:12px; }
+  .plan-item label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .plan-item p { font-size:14px; font-weight:500; color:var(--text); margin-top:3px; }
+
+  /* Table */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; padding:10px 12px; color:var(--muted); font-weight:500; border-bottom:1px solid var(--border); font-size:11px; text-transform:uppercase; }
+  td { padding:10px 12px; border-bottom:1px solid #1e1e1e; color:var(--text); }
+  tr:hover td { background:#1f1f1f; }
+
+  /* Forms */
+  .form-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px; }
+  .form-group { display:flex; flex-direction:column; gap:5px; }
+  .form-group label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  input, select { background:#111; border:1px solid var(--border); color:var(--text); padding:9px 12px; border-radius:7px; font-size:13px; font-family:inherit; width:100%; }
+  input:focus, select:focus { outline:none; border-color:var(--gold); }
+  select option { background:#191919; }
+
+  .btn { padding:9px 18px; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer; border:none; font-family:inherit; }
+  .btn-primary { background:var(--gold); color:#000; }
+  .btn-primary:hover { background:#e6a800; }
+  .btn-danger { background:#c62828; color:#fff; }
+  .btn-danger:hover { background:#b71c1c; }
+  .btn-outline { background:transparent; border:1px solid var(--border); color:var(--muted); }
+  .btn-outline:hover { border-color:var(--gold); color:var(--gold); }
+  .btn-sm { padding:5px 12px; font-size:12px; }
+
+  /* Admin login */
+  .admin-login { max-width:340px; margin:60px auto; }
+  .admin-login input { margin-bottom:12px; }
+
+  /* Date filter */
+  .filter-bar { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+  .filter-bar label { font-size:12px; color:var(--muted); }
+  .filter-bar input { width:170px; }
+
+  /* Empty state */
+  .empty { text-align:center; padding:40px; color:var(--muted); font-size:13px; }
+
+  /* Modal */
+  .modal-overlay { display:none; position:fixed; inset:0; background:#000a; z-index:100; align-items:center; justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; width:90%; max-width:600px; max-height:90vh; overflow-y:auto; }
+  .modal h3 { font-size:15px; font-weight:600; color:var(--gold); margin-bottom:18px; }
+  .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
+
+  .section-hidden { display:none; }
+</style>
+</head>
+<body>
+
+<!-- Login Screen -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>🚖 Cab Service</h1>
+    <p>Cuemath Night Shift Transport</p>
+    <button class="g-signin-btn" onclick="startGoogleLogin()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg">
+      Sign in with Google
+    </button>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="app">
+  <header>
+    <div class="logo">🚖 Cab Service</div>
+    <div class="user-info">
+      <span id="user-name-display"></span>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="tabs" id="tabs">
+    <div class="tab active" onclick="showTab('my-plan')">My Travel Plan</div>
+    <div class="tab section-hidden" id="tab-admin" onclick="showTab('admin')">Admin</div>
+  </div>
+
+  <!-- My Plan Tab -->
+  <div id="tab-my-plan" class="content">
+    <div class="filter-bar">
+      <label>Filter by date:</label>
+      <input type="date" id="plan-date-filter" onchange="loadMyPlan()">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('plan-date-filter').value=''; loadMyPlan()">All</button>
+    </div>
+    <div id="my-plan-list"><div class="empty">Loading...</div></div>
+  </div>
+
+  <!-- Admin Tab -->
+  <div id="tab-admin" class="content section-hidden">
+
+    <!-- Admin Login -->
+    <div id="admin-login-form" class="admin-login card">
+      <div class="card-title">Admin Access</div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Password</label>
+        <input type="password" id="admin-pwd" placeholder="Enter admin password">
+      </div>
+      <button class="btn btn-primary" onclick="adminLogin()">Login</button>
+      <p id="admin-err" style="color:#ef5350;font-size:12px;margin-top:8px;"></p>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="admin-panel" class="section-hidden">
+
+      <!-- Routes -->
+      <div class="card">
+        <div class="card-title">Manage Routes</div>
+        <div class="form-grid" style="margin-bottom:14px;">
+          <div class="form-group">
+            <label>Route Name</label>
+            <input type="text" id="new-route-name" placeholder="e.g. Route A - Whitefield">
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <input type="text" id="new-route-desc" placeholder="Stops / Area info">
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addRoute()">Add Route</button>
+        <div id="routes-list" style="margin-top:16px;"></div>
+      </div>
+
+      <!-- Add Employee to Roster -->
+      <div class="card">
+        <div class="card-title">Add Employee to Roster</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Employee Name</label>
+            <input type="text" id="r-name" placeholder="Full Name">
+          </div>
+          <div class="form-group">
+            <label>Employee Code</label>
+            <input type="text" id="r-code" placeholder="EMP001">
+          </div>
+          <div class="form-group">
+            <label>Mobile Number</label>
+            <input type="text" id="r-mobile" placeholder="9999999999">
+          </div>
+          <div class="form-group">
+            <label>Email (optional)</label>
+            <input type="email" id="r-email" placeholder="emp@cuemath.com">
+          </div>
+          <div class="form-group">
+            <label>Route</label>
+            <select id="r-route"></select>
+          </div>
+          <div class="form-group">
+            <label>Pick Location</label>
+            <input type="text" id="r-pick-loc" placeholder="Stop name / address">
+          </div>
+          <div class="form-group">
+            <label>Pick Time</label>
+            <input type="time" id="r-pick-time">
+          </div>
+          <div class="form-group">
+            <label>Drop Time</label>
+            <input type="time" id="r-drop-time">
+          </div>
+          <div class="form-group">
+            <label>Office Report Time</label>
+            <input type="time" id="r-report-time">
+          </div>
+          <div class="form-group">
+            <label>Shift Date</label>
+            <input type="date" id="r-shift-date">
+          </div>
+          <div class="form-group">
+            <label>Driver Name</label>
+            <input type="text" id="r-driver-name" placeholder="Driver full name">
+          </div>
+          <div class="form-group">
+            <label>Driver Mobile</label>
+            <input type="text" id="r-driver-mobile" placeholder="9999999999">
+          </div>
+          <div class="form-group">
+            <label>Cab Type</label>
+            <input type="text" id="r-cab-type" placeholder="e.g. Swift Dzire, Innova">
+          </div>
+          <div class="form-group">
+            <label>Car Number</label>
+            <input type="text" id="r-car-number" placeholder="KA 01 AB 1234">
+          </div>
+        </div>
+        <button class="btn btn-primary" style="margin-top:14px;" onclick="addToRoster()">Add to Roster</button>
+      </div>
+
+      <!-- Roster Table -->
+      <div class="card">
+        <div class="card-title">Roster</div>
+        <div class="filter-bar">
+          <label>Filter by date:</label>
+          <input type="date" id="roster-date-filter" onchange="loadRoster()">
+          <button class="btn btn-outline btn-sm" onclick="document.getElementById('roster-date-filter').value=''; loadRoster()">All</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th><th>Code</th><th>Mobile</th><th>Route</th>
+                <th>Pick Location</th><th>Pick Time</th><th>Drop Time</th>
+                <th>Report Time</th><th>Driver</th><th>Car No.</th><th>Date</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="roster-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <h3>Edit Roster Entry</h3>
+    <input type="hidden" id="edit-id">
+    <div class="form-grid">
+      <div class="form-group"><label>Employee Name</label><input type="text" id="edit-name"></div>
+      <div class="form-group"><label>Employee Code</label><input type="text" id="edit-code"></div>
+      <div class="form-group"><label>Mobile</label><input type="text" id="edit-mobile"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="edit-email"></div>
+      <div class="form-group"><label>Route</label><select id="edit-route"></select></div>
+      <div class="form-group"><label>Pick Location</label><input type="text" id="edit-pick-loc"></div>
+      <div class="form-group"><label>Pick Time</label><input type="time" id="edit-pick-time"></div>
+      <div class="form-group"><label>Drop Time</label><input type="time" id="edit-drop-time"></div>
+      <div class="form-group"><label>Report Time</label><input type="time" id="edit-report-time"></div>
+      <div class="form-group"><label>Shift Date</label><input type="date" id="edit-shift-date"></div>
+      <div class="form-group"><label>Driver Name</label><input type="text" id="edit-driver-name"></div>
+      <div class="form-group"><label>Driver Mobile</label><input type="text" id="edit-driver-mobile"></div>
+      <div class="form-group"><label>Cab Type</label><input type="text" id="edit-cab-type"></div>
+      <div class="form-group"><label>Car Number</label><input type="text" id="edit-car-number"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+let currentUser = null;
+let isAdmin = false;
+let routesData = [];
+let googleClientId = '';
+
+async function init() {
+  const res = await fetch('/api/config');
+  const cfg = await res.json();
+  googleClientId = cfg.google_client_id;
+}
+init();
+
+function startGoogleLogin() {
+  google.accounts.id.initialize({
+    client_id: googleClientId,
+    callback: handleCredential,
+    use_fedcm_for_prompt: false
+  });
+  google.accounts.id.prompt((n) => {
+    if (n.isNotDisplayed() || n.isSkippedMoment()) {
+      google.accounts.id.renderButton(document.createElement('div'), {});
+      const btn = document.querySelector('.g-signin-btn');
+      btn.disabled = true;
+      btn.textContent = 'Opening Google Login...';
+      google.accounts.oauth2 && google.accounts.id.prompt();
+    }
+  });
+}
+
+async function handleCredential(resp) {
+  const res = await fetch('/api/verify-token', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({token: resp.credential})
+  });
+  const data = await res.json();
+  if (data.success) {
+    currentUser = data.user;
+    showApp();
+  } else {
+    alert('Access denied. Use your Cuemath email.');
+  }
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-name-display').textContent = currentUser.name || currentUser.email;
+  loadMyPlan();
+}
+
+function logout() {
+  currentUser = null;
+  isAdmin = false;
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('admin-panel').classList.add('section-hidden');
+  document.getElementById('admin-login-form').classList.remove('section-hidden');
+}
+
+function showTab(tab) {
+  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-my-plan').style.display = 'none';
+
+  const adminTabContent = document.querySelectorAll('#tab-admin')[1] ||
+    document.querySelector('.content.section-hidden');
+
+  if (tab === 'my-plan') {
+    event.target.classList.add('active');
+    document.getElementById('tab-my-plan').style.display = 'block';
+  } else {
+    event.target.classList.add('active');
+    // Show admin content
+    document.querySelectorAll('.content')[1].classList.remove('section-hidden');
+    document.getElementById('tab-my-plan').style.display = 'none';
+  }
+}
+
+// Simpler tab logic
+document.addEventListener('DOMContentLoaded', () => {});
+
+function showTab(tab) {
+  const myPlan = document.getElementById('tab-my-plan');
+  const adminContent = document.getElementById('admin-content');
+  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+
+  if (tab === 'my-plan') {
+    myPlan.style.display = 'block';
+    if (adminContent) adminContent.style.display = 'none';
+    document.querySelector('[onclick="showTab(\'my-plan\')"]').classList.add('active');
+  } else {
+    myPlan.style.display = 'none';
+    if (adminContent) adminContent.style.display = 'block';
+    document.querySelector('[onclick="showTab(\'admin\')"]').classList.add('active');
+    loadRoutes();
+    loadRoster();
+  }
+}
+
+async function loadMyPlan() {
+  if (!currentUser) return;
+  const dateFilter = document.getElementById('plan-date-filter').value;
+  const url = `/api/my-plan?email=${encodeURIComponent(currentUser.email)}`;
+  const res = await fetch(url);
+  let data = await res.json();
+
+  if (dateFilter) {
+    data = data.filter(e => e.shift_date === dateFilter);
+  }
+
+  const el = document.getElementById('my-plan-list');
+  if (!data.length) {
+    el.innerHTML = '<div class="empty">No travel plan found for your account.</div>';
+    return;
+  }
+
+  el.innerHTML = data.map(e => `
+    <div class="plan-card">
+      <div class="plan-header">
+        <div class="plan-date">📅 ${formatDate(e.shift_date)}</div>
+        <div class="route-badge">${e.route_name || 'No Route'}</div>
+      </div>
+      <div class="plan-grid">
+        <div class="plan-item"><label>Employee Name</label><p>${e.employee_name}</p></div>
+        <div class="plan-item"><label>Employee Code</label><p>${e.employee_code}</p></div>
+        <div class="plan-item"><label>Mobile</label><p>${e.mobile}</p></div>
+        <div class="plan-item"><label>Pick Location</label><p>${e.pick_location}</p></div>
+        <div class="plan-item"><label>Pick Time</label><p>${formatTime(e.pick_time)}</p></div>
+        <div class="plan-item"><label>Drop Time</label><p>${formatTime(e.drop_time)}</p></div>
+        <div class="plan-item"><label>Report Time</label><p>${formatTime(e.report_time)}</p></div>
+        <div class="plan-item"><label>Driver Name</label><p>${e.driver_name || '-'}</p></div>
+        <div class="plan-item"><label>Driver Mobile</label><p>${e.driver_mobile || '-'}</p></div>
+        <div class="plan-item"><label>Cab Type</label><p>${e.cab_type || '-'}</p></div>
+        <div class="plan-item"><label>Car Number</label><p>${e.car_number || '-'}</p></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function adminLogin() {
+  const pwd = document.getElementById('admin-pwd').value;
+  const res = await fetch('/api/admin/login', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({password: pwd})
+  });
+  const data = await res.json();
+  if (data.success) {
+    isAdmin = true;
+    document.getElementById('admin-login-form').classList.add('section-hidden');
+    document.getElementById('admin-panel').classList.remove('section-hidden');
+    document.getElementById('tab-admin').classList.remove('section-hidden');
+    loadRoutes();
+    loadRoster();
+  } else {
+    document.getElementById('admin-err').textContent = 'Wrong password';
+  }
+}
+
+async function loadRoutes() {
+  const res = await fetch('/api/routes');
+  routesData = await res.json();
+
+  // Populate selects
+  const opts = routesData.map(r => `<option value="${r.id}">${r.route_name}</option>`).join('');
+  document.getElementById('r-route').innerHTML = opts;
+  document.getElementById('edit-route').innerHTML = opts;
+
+  // Routes list
+  const el = document.getElementById('routes-list');
+  if (!routesData.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;">No routes yet.</p>'; return; }
+  el.innerHTML = `<table><thead><tr><th>Route Name</th><th>Description</th><th>Action</th></tr></thead><tbody>
+    ${routesData.map(r => `
+      <tr>
+        <td>${r.route_name}</td>
+        <td style="color:var(--muted);">${r.description || '-'}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="deleteRoute(${r.id})">Delete</button></td>
+      </tr>`).join('')}
+  </tbody></table>`;
+}
+
+async function addRoute() {
+  const name = document.getElementById('new-route-name').value.trim();
+  if (!name) { alert('Route name required'); return; }
+  await fetch('/api/admin/route', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({route_name: name, description: document.getElementById('new-route-desc').value})
+  });
+  document.getElementById('new-route-name').value = '';
+  document.getElementById('new-route-desc').value = '';
+  loadRoutes();
+}
+
+async function deleteRoute(id) {
+  if (!confirm('Delete this route?')) return;
+  await fetch('/api/admin/route/delete', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({id})
+  });
+  loadRoutes();
+}
+
+async function addToRoster() {
+  const payload = {
+    employee_name: document.getElementById('r-name').value.trim(),
+    employee_code: document.getElementById('r-code').value.trim(),
+    mobile: document.getElementById('r-mobile').value.trim(),
+    email: document.getElementById('r-email').value.trim(),
+    route_id: document.getElementById('r-route').value,
+    pick_location: document.getElementById('r-pick-loc').value.trim(),
+    pick_time: document.getElementById('r-pick-time').value,
+    drop_time: document.getElementById('r-drop-time').value,
+    report_time: document.getElementById('r-report-time').value,
+    shift_date: document.getElementById('r-shift-date').value,
+    driver_name: document.getElementById('r-driver-name').value.trim(),
+    driver_mobile: document.getElementById('r-driver-mobile').value.trim(),
+    cab_type: document.getElementById('r-cab-type').value.trim(),
+    car_number: document.getElementById('r-car-number').value.trim(),
+  };
+  if (!payload.employee_name || !payload.employee_code || !payload.mobile || !payload.shift_date) {
+    alert('Please fill all required fields'); return;
+  }
+  await fetch('/api/admin/roster', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  ['r-name','r-code','r-mobile','r-email','r-pick-loc','r-pick-time','r-drop-time','r-report-time','r-shift-date','r-driver-name','r-driver-mobile','r-cab-type','r-car-number']
+    .forEach(id => document.getElementById(id).value = '');
+  loadRoster();
+}
+
+async function loadRoster() {
+  const date = document.getElementById('roster-date-filter').value;
+  const url = date ? `/api/roster?date=${date}` : '/api/roster';
+  const res = await fetch(url);
+  const data = await res.json();
+
+  const tbody = document.getElementById('roster-tbody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="10" class="empty">No roster entries found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(e => `
+    <tr>
+      <td>${e.employee_name}</td>
+      <td>${e.employee_code}</td>
+      <td>${e.mobile}</td>
+      <td>${e.route_name || '-'}</td>
+      <td>${e.pick_location}</td>
+      <td>${formatTime(e.pick_time)}</td>
+      <td>${formatTime(e.drop_time)}</td>
+      <td>${formatTime(e.report_time)}</td>
+      <td>${e.driver_name || '-'}<br><span style="color:var(--muted);font-size:11px;">${e.driver_mobile || ''}</span></td>
+      <td>${e.car_number || '-'}<br><span style="color:var(--muted);font-size:11px;">${e.cab_type || ''}</span></td>
+      <td>${formatDate(e.shift_date)}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm" onclick="openEdit(${JSON.stringify(e).replace(/"/g,'&quot;')})">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRoster(${e.id})">Del</button>
+      </td>
+    </tr>`).join('');
+}
+
+function openEdit(e) {
+  document.getElementById('edit-id').value = e.id;
+  document.getElementById('edit-name').value = e.employee_name;
+  document.getElementById('edit-code').value = e.employee_code;
+  document.getElementById('edit-mobile').value = e.mobile;
+  document.getElementById('edit-email').value = e.email || '';
+  document.getElementById('edit-route').value = e.route_id;
+  document.getElementById('edit-pick-loc').value = e.pick_location;
+  document.getElementById('edit-pick-time').value = e.pick_time;
+  document.getElementById('edit-drop-time').value = e.drop_time;
+  document.getElementById('edit-report-time').value = e.report_time;
+  document.getElementById('edit-shift-date').value = e.shift_date;
+  document.getElementById('edit-driver-name').value = e.driver_name || '';
+  document.getElementById('edit-driver-mobile').value = e.driver_mobile || '';
+  document.getElementById('edit-cab-type').value = e.cab_type || '';
+  document.getElementById('edit-car-number').value = e.car_number || '';
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+}
+
+async function saveEdit() {
+  const payload = {
+    id: document.getElementById('edit-id').value,
+    employee_name: document.getElementById('edit-name').value,
+    employee_code: document.getElementById('edit-code').value,
+    mobile: document.getElementById('edit-mobile').value,
+    email: document.getElementById('edit-email').value,
+    route_id: document.getElementById('edit-route').value,
+    pick_location: document.getElementById('edit-pick-loc').value,
+    pick_time: document.getElementById('edit-pick-time').value,
+    drop_time: document.getElementById('edit-drop-time').value,
+    report_time: document.getElementById('edit-report-time').value,
+    shift_date: document.getElementById('edit-shift-date').value,
+    driver_name: document.getElementById('edit-driver-name').value,
+    driver_mobile: document.getElementById('edit-driver-mobile').value,
+    cab_type: document.getElementById('edit-cab-type').value,
+    car_number: document.getElementById('edit-car-number').value,
+  };
+  await fetch('/api/admin/roster/edit', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  closeModal();
+  loadRoster();
+}
+
+async function deleteRoster(id) {
+  if (!confirm('Delete this entry?')) return;
+  await fetch('/api/admin/roster/delete', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({id})
+  });
+  loadRoster();
+}
+
+function formatTime(t) {
+  if (!t) return '-';
+  const [h, m] = t.split(':');
+  const hr = parseInt(h);
+  return `${hr > 12 ? hr-12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+}
+
+function formatDate(d) {
+  if (!d) return '-';
+  const dt = new Date(d + 'T00:00:00');
+  return dt.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+}
+</script>
+</body>
+</html>
