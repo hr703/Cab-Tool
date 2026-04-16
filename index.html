@@ -3,621 +3,832 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cuemath Cab Service</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>Night Shift Cab Management</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0D0D0D; color: #E0E0E0; font-family: 'Inter', sans-serif; min-height: 100vh; }
-  :root { --gold: #FFBA07; --bg: #0D0D0D; --card: #191919; --border: #2A2A2A; --text: #E0E0E0; --muted: #888; }
-
-  /* Login */
-  #login-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
-  .login-box { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:40px; text-align:center; width:360px; }
-  .login-box h1 { font-size:22px; color:var(--gold); margin-bottom:6px; }
-  .login-box p { color:var(--muted); font-size:13px; margin-bottom:28px; }
-  .g-signin-btn { background:#fff; color:#333; border:none; border-radius:8px; padding:12px 20px; font-size:14px; font-weight:600; cursor:pointer; width:100%; display:flex; align-items:center; justify-content:center; gap:10px; }
-  .g-signin-btn:hover { background:#f5f5f5; }
-  .g-signin-btn img { width:20px; }
-
-  /* App */
-  #app { display:none; }
-  header { background:var(--card); border-bottom:1px solid var(--border); padding:0 24px; display:flex; align-items:center; justify-content:space-between; height:56px; }
-  header .logo { font-size:16px; font-weight:700; color:var(--gold); }
-  header .user-info { font-size:13px; color:var(--muted); display:flex; align-items:center; gap:12px; }
-  .logout-btn { background:transparent; border:1px solid var(--border); color:var(--muted); padding:5px 12px; border-radius:6px; cursor:pointer; font-size:12px; }
-  .logout-btn:hover { border-color:var(--gold); color:var(--gold); }
-
-  /* Tabs */
-  .tabs { display:flex; gap:0; border-bottom:1px solid var(--border); background:var(--card); padding:0 24px; }
-  .tab { padding:14px 20px; font-size:13px; font-weight:500; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; }
-  .tab.active { color:var(--gold); border-bottom-color:var(--gold); }
-  .tab:hover:not(.active) { color:var(--text); }
-
-  .content { padding:24px; max-width:1100px; margin:0 auto; }
-
-  /* Cards */
-  .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:16px; }
-  .card-title { font-size:14px; font-weight:600; color:var(--gold); margin-bottom:16px; }
-
-  /* My Plan */
-  .plan-card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:12px; }
-  .plan-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
-  .plan-date { font-size:13px; font-weight:600; color:var(--gold); }
-  .route-badge { background:#FFBA0720; color:var(--gold); padding:3px 10px; border-radius:12px; font-size:11px; font-weight:600; }
-  .plan-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:12px; }
-  .plan-item label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
-  .plan-item p { font-size:14px; font-weight:500; color:var(--text); margin-top:3px; }
-
-  /* Table */
-  .table-wrap { overflow-x:auto; }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  th { text-align:left; padding:10px 12px; color:var(--muted); font-weight:500; border-bottom:1px solid var(--border); font-size:11px; text-transform:uppercase; }
-  td { padding:10px 12px; border-bottom:1px solid #1e1e1e; color:var(--text); }
-  tr:hover td { background:#1f1f1f; }
-
-  /* Forms */
-  .form-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px,1fr)); gap:12px; }
-  .form-group { display:flex; flex-direction:column; gap:5px; }
-  .form-group label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
-  input, select { background:#111; border:1px solid var(--border); color:var(--text); padding:9px 12px; border-radius:7px; font-size:13px; font-family:inherit; width:100%; }
-  input:focus, select:focus { outline:none; border-color:var(--gold); }
-  select option { background:#191919; }
-
-  .btn { padding:9px 18px; border-radius:7px; font-size:13px; font-weight:600; cursor:pointer; border:none; font-family:inherit; }
-  .btn-primary { background:var(--gold); color:#000; }
-  .btn-primary:hover { background:#e6a800; }
-  .btn-danger { background:#c62828; color:#fff; }
-  .btn-danger:hover { background:#b71c1c; }
-  .btn-outline { background:transparent; border:1px solid var(--border); color:var(--muted); }
-  .btn-outline:hover { border-color:var(--gold); color:var(--gold); }
-  .btn-sm { padding:5px 12px; font-size:12px; }
-
-  /* Admin login */
-  .admin-login { max-width:340px; margin:60px auto; }
-  .admin-login input { margin-bottom:12px; }
-
-  /* Date filter */
-  .filter-bar { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
-  .filter-bar label { font-size:12px; color:var(--muted); }
-  .filter-bar input { width:170px; }
-
-  /* Empty state */
-  .empty { text-align:center; padding:40px; color:var(--muted); font-size:13px; }
-
-  /* Modal */
-  .modal-overlay { display:none; position:fixed; inset:0; background:#000a; z-index:100; align-items:center; justify-content:center; }
-  .modal-overlay.open { display:flex; }
-  .modal { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; width:90%; max-width:600px; max-height:90vh; overflow-y:auto; }
-  .modal h3 { font-size:15px; font-weight:600; color:var(--gold); margin-bottom:18px; }
-  .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
-
-  .section-hidden { display:none; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0D0D0D;color:#E0E0E0;font-family:'Segoe UI',sans-serif;min-height:100vh}
+:root{--gold:#FFBA07;--dark:#0D0D0D;--card:#1A1A1A;--border:#2A2A2A;--red:#E05252;--green:#52C070}
+.hidden{display:none!important}
+#topbar{background:#111;border-bottom:2px solid var(--gold);padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
+#topbar h1{color:var(--gold);font-size:18px;letter-spacing:1px}
+.user-info{font-size:13px;color:#aaa;display:flex;align-items:center;gap:12px}
+.user-info span{color:#fff}
+#btn-logout{background:none;border:1px solid #444;color:#aaa;padding:5px 12px;border-radius:4px;cursor:pointer;font-size:12px}
+#btn-logout:hover{border-color:var(--gold);color:var(--gold)}
+#login-page{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:24px}
+.login-box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:40px;width:380px;text-align:center}
+.login-box h2{color:var(--gold);margin-bottom:8px;font-size:22px}
+.login-box p{color:#888;font-size:13px;margin-bottom:28px}
+.inp{width:100%;background:#0D0D0D;border:1px solid var(--border);color:#fff;padding:10px 14px;border-radius:6px;font-size:14px;margin-bottom:10px;outline:none}
+.inp:focus{border-color:var(--gold)}
+.btn{width:100%;padding:11px;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s}
+.btn-gold{background:var(--gold);color:#000}
+.btn-gold:hover{opacity:.85}
+.err-msg{color:var(--red);font-size:12px;margin-top:6px;text-align:left}
+#app{display:flex;flex-direction:column;min-height:100vh}
+#main-content{flex:1;padding:24px}
+.tabs{display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border);flex-wrap:wrap}
+.tab-btn{background:none;border:none;color:#888;padding:10px 18px;cursor:pointer;font-size:14px;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+.tab-btn:hover{color:#fff}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px}
+.kpi-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 24px;flex:1;min-width:140px}
+.kpi-label{font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.5px}
+.kpi-val{font-size:26px;font-weight:700;color:var(--gold);margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#111;color:#aaa;padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);font-weight:500;font-size:12px;text-transform:uppercase}
+td{padding:10px 12px;border-bottom:1px solid #1f1f1f;vertical-align:middle}
+tr:hover td{background:#1e1e1e}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-green{background:#0d2e1a;color:var(--green)}
+.badge-yellow{background:#2e2200;color:var(--gold)}
+.badge-red{background:#2e0d0d;color:var(--red)}
+.badge-gray{background:#222;color:#888}
+.action-btn{background:none;border:1px solid #333;color:#aaa;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;margin-right:4px}
+.action-btn:hover{border-color:var(--gold);color:var(--gold)}
+.action-btn.danger:hover{border-color:var(--red);color:var(--red)}
+.btn-sm{padding:7px 14px;font-size:13px;border-radius:5px;border:none;cursor:pointer;font-weight:600}
+.btn-sm-gold{background:var(--gold);color:#000}
+.btn-sm-gold:hover{opacity:.85}
+.btn-sm-outline{background:none;border:1px solid var(--gold);color:var(--gold)}
+.btn-sm-outline:hover{background:var(--gold);color:#000}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal h3{color:var(--gold);margin-bottom:20px;font-size:17px}
+.form-row{margin-bottom:12px}
+.form-row label{display:block;font-size:12px;color:#888;margin-bottom:4px}
+.form-row input,.form-row select{width:100%;background:#0D0D0D;border:1px solid var(--border);color:#fff;padding:9px 12px;border-radius:6px;font-size:13px;outline:none}
+.form-row input:focus,.form-row select:focus{border-color:var(--gold)}
+.form-row select option{background:#1a1a1a}
+.modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.assigned{color:var(--green)}
+.pending-text{color:#888;font-style:italic}
+.plan-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:14px}
+.plan-date{font-size:18px;font-weight:700;color:var(--gold);margin-bottom:12px}
+.plan-row{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;font-size:14px}
+.plan-icon{width:20px;text-align:center;color:var(--gold);flex-shrink:0}
+.plan-label{color:#888;min-width:80px;font-size:12px;flex-shrink:0}
+#toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;border:1px solid var(--gold);color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;transition:opacity .3s;opacity:0}
+#toast.show{opacity:1}
+@media(max-width:600px){.two-col{grid-template-columns:1fr}.kpi{min-width:120px}#main-content{padding:12px}}
 </style>
 </head>
 <body>
 
-<!-- Login Screen -->
-<div id="login-screen">
+<div id="toast"></div>
+
+<!-- LOGIN PAGE -->
+<div id="login-page">
+  <div style="text-align:center;margin-bottom:8px">
+    <div style="color:var(--gold);font-size:28px;font-weight:700">🚗 Night Shift Cab</div>
+    <div style="color:#666;font-size:13px;margin-top:4px">Female Employee Transport Management</div>
+  </div>
+
   <div class="login-box">
-    <h1>🚖 Cab Service</h1>
-    <p>Cuemath Night Shift Transport</p>
-    <button class="g-signin-btn" onclick="startGoogleLogin()">
-      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg">
-      Sign in with Google
-    </button>
+    <h2>Employee / Admin Login</h2>
+    <p>Login with your Cuemath Google account</p>
+    <div id="g_id_signin" style="display:flex;justify-content:center"></div>
+    <div id="google-err" class="err-msg" style="text-align:center;margin-top:10px"></div>
+  </div>
+
+  <div style="color:#555;font-size:13px">— OR —</div>
+
+  <div class="login-box">
+    <h2>Vendor Login</h2>
+    <p>For Cab Company &amp; Security Agency</p>
+    <input class="inp" id="v-name" placeholder="Vendor / Company Name" autocomplete="off">
+    <input class="inp" id="v-pass" type="password" placeholder="Password">
+    <div id="vendor-err" class="err-msg"></div>
+    <button class="btn btn-gold" style="margin-top:8px" onclick="vendorLogin()">Login</button>
   </div>
 </div>
 
-<!-- Main App -->
-<div id="app">
-  <header>
-    <div class="logo">🚖 Cab Service</div>
+<!-- MAIN APP -->
+<div id="app" class="hidden">
+  <div id="topbar">
+    <h1>🚗 Night Shift Cab Management</h1>
     <div class="user-info">
-      <span id="user-name-display"></span>
-      <button class="logout-btn" onclick="logout()">Logout</button>
-    </div>
-  </header>
-
-  <div class="tabs" id="tabs">
-    <div class="tab active" onclick="showTab('my-plan')">My Travel Plan</div>
-    <div class="tab section-hidden" id="tab-admin" onclick="showTab('admin')">Admin</div>
-  </div>
-
-  <!-- My Plan Tab -->
-  <div id="tab-my-plan" class="content">
-    <div class="filter-bar">
-      <label>Filter by date:</label>
-      <input type="date" id="plan-date-filter" onchange="loadMyPlan()">
-      <button class="btn btn-outline btn-sm" onclick="document.getElementById('plan-date-filter').value=''; loadMyPlan()">All</button>
-    </div>
-    <div id="my-plan-list"><div class="empty">Loading...</div></div>
-  </div>
-
-  <!-- Admin Tab -->
-  <div id="tab-admin" class="content section-hidden">
-
-    <!-- Admin Login -->
-    <div id="admin-login-form" class="admin-login card">
-      <div class="card-title">Admin Access</div>
-      <div class="form-group" style="margin-bottom:12px;">
-        <label>Password</label>
-        <input type="password" id="admin-pwd" placeholder="Enter admin password">
-      </div>
-      <button class="btn btn-primary" onclick="adminLogin()">Login</button>
-      <p id="admin-err" style="color:#ef5350;font-size:12px;margin-top:8px;"></p>
-    </div>
-
-    <!-- Admin Panel -->
-    <div id="admin-panel" class="section-hidden">
-
-      <!-- Routes -->
-      <div class="card">
-        <div class="card-title">Manage Routes</div>
-        <div class="form-grid" style="margin-bottom:14px;">
-          <div class="form-group">
-            <label>Route Name</label>
-            <input type="text" id="new-route-name" placeholder="e.g. Route A - Whitefield">
-          </div>
-          <div class="form-group">
-            <label>Description</label>
-            <input type="text" id="new-route-desc" placeholder="Stops / Area info">
-          </div>
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="addRoute()">Add Route</button>
-        <div id="routes-list" style="margin-top:16px;"></div>
-      </div>
-
-      <!-- Add Employee to Roster -->
-      <div class="card">
-        <div class="card-title">Add Employee to Roster</div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Employee Name</label>
-            <input type="text" id="r-name" placeholder="Full Name">
-          </div>
-          <div class="form-group">
-            <label>Employee Code</label>
-            <input type="text" id="r-code" placeholder="EMP001">
-          </div>
-          <div class="form-group">
-            <label>Mobile Number</label>
-            <input type="text" id="r-mobile" placeholder="9999999999">
-          </div>
-          <div class="form-group">
-            <label>Email (optional)</label>
-            <input type="email" id="r-email" placeholder="emp@cuemath.com">
-          </div>
-          <div class="form-group">
-            <label>Route</label>
-            <select id="r-route"></select>
-          </div>
-          <div class="form-group">
-            <label>Pick Location</label>
-            <input type="text" id="r-pick-loc" placeholder="Stop name / address">
-          </div>
-          <div class="form-group">
-            <label>Pick Time</label>
-            <input type="time" id="r-pick-time">
-          </div>
-          <div class="form-group">
-            <label>Drop Time</label>
-            <input type="time" id="r-drop-time">
-          </div>
-          <div class="form-group">
-            <label>Office Report Time</label>
-            <input type="time" id="r-report-time">
-          </div>
-          <div class="form-group">
-            <label>Shift Date</label>
-            <input type="date" id="r-shift-date">
-          </div>
-          <div class="form-group">
-            <label>Driver Name</label>
-            <input type="text" id="r-driver-name" placeholder="Driver full name">
-          </div>
-          <div class="form-group">
-            <label>Driver Mobile</label>
-            <input type="text" id="r-driver-mobile" placeholder="9999999999">
-          </div>
-          <div class="form-group">
-            <label>Cab Type</label>
-            <input type="text" id="r-cab-type" placeholder="e.g. Swift Dzire, Innova">
-          </div>
-          <div class="form-group">
-            <label>Car Number</label>
-            <input type="text" id="r-car-number" placeholder="KA 01 AB 1234">
-          </div>
-        </div>
-        <button class="btn btn-primary" style="margin-top:14px;" onclick="addToRoster()">Add to Roster</button>
-      </div>
-
-      <!-- Roster Table -->
-      <div class="card">
-        <div class="card-title">Roster</div>
-        <div class="filter-bar">
-          <label>Filter by date:</label>
-          <input type="date" id="roster-date-filter" onchange="loadRoster()">
-          <button class="btn btn-outline btn-sm" onclick="document.getElementById('roster-date-filter').value=''; loadRoster()">All</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th><th>Code</th><th>Mobile</th><th>Route</th>
-                <th>Pick Location</th><th>Pick Time</th><th>Drop Time</th>
-                <th>Report Time</th><th>Driver</th><th>Car No.</th><th>Date</th><th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="roster-tbody"></tbody>
-          </table>
-        </div>
-      </div>
+      <span id="user-display"></span>
+      <span id="role-badge" class="badge"></span>
+      <button id="btn-logout" onclick="logout()">Logout</button>
     </div>
   </div>
+  <div id="main-content"></div>
 </div>
 
-<!-- Edit Modal -->
-<div class="modal-overlay" id="edit-modal">
-  <div class="modal">
-    <h3>Edit Roster Entry</h3>
-    <input type="hidden" id="edit-id">
-    <div class="form-grid">
-      <div class="form-group"><label>Employee Name</label><input type="text" id="edit-name"></div>
-      <div class="form-group"><label>Employee Code</label><input type="text" id="edit-code"></div>
-      <div class="form-group"><label>Mobile</label><input type="text" id="edit-mobile"></div>
-      <div class="form-group"><label>Email</label><input type="email" id="edit-email"></div>
-      <div class="form-group"><label>Route</label><select id="edit-route"></select></div>
-      <div class="form-group"><label>Pick Location</label><input type="text" id="edit-pick-loc"></div>
-      <div class="form-group"><label>Pick Time</label><input type="time" id="edit-pick-time"></div>
-      <div class="form-group"><label>Drop Time</label><input type="time" id="edit-drop-time"></div>
-      <div class="form-group"><label>Report Time</label><input type="time" id="edit-report-time"></div>
-      <div class="form-group"><label>Shift Date</label><input type="date" id="edit-shift-date"></div>
-      <div class="form-group"><label>Driver Name</label><input type="text" id="edit-driver-name"></div>
-      <div class="form-group"><label>Driver Mobile</label><input type="text" id="edit-driver-mobile"></div>
-      <div class="form-group"><label>Cab Type</label><input type="text" id="edit-cab-type"></div>
-      <div class="form-group"><label>Car Number</label><input type="text" id="edit-car-number"></div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
-    </div>
-  </div>
-</div>
-
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
+const API = '';
 let currentUser = null;
-let isAdmin = false;
-let routesData = [];
-let googleClientId = '';
+let routesCache = [];
+let employeesCache = [];
+let vendorsCache = [];
+let rosterWeekOffset = 0;
 
-async function init() {
-  const res = await fetch('/api/config');
-  const cfg = await res.json();
-  googleClientId = cfg.google_client_id;
-}
-init();
-
-function startGoogleLogin() {
-  google.accounts.id.initialize({
-    client_id: googleClientId,
-    callback: handleCredential,
-    use_fedcm_for_prompt: false
-  });
-  google.accounts.id.prompt((n) => {
-    if (n.isNotDisplayed() || n.isSkippedMoment()) {
-      google.accounts.id.renderButton(document.createElement('div'), {});
-      const btn = document.querySelector('.g-signin-btn');
-      btn.disabled = true;
-      btn.textContent = 'Opening Google Login...';
-      google.accounts.oauth2 && google.accounts.id.prompt();
-    }
-  });
+async function initGoogle() {
+  try {
+    const cfg = await fetch(API + '/api/config').then(r => r.json());
+    if (!cfg.google_client_id) { document.getElementById('google-err').textContent = 'Google login not configured'; return; }
+    google.accounts.id.initialize({ client_id: cfg.google_client_id, callback: handleGoogleLogin });
+    google.accounts.id.renderButton(document.getElementById('g_id_signin'), { theme: 'filled_black', size: 'large', text: 'signin_with_google', width: 280 });
+  } catch(e) { document.getElementById('google-err').textContent = 'Could not load Google login'; }
 }
 
-async function handleCredential(resp) {
-  const res = await fetch('/api/verify-token', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({token: resp.credential})
-  });
-  const data = await res.json();
-  if (data.success) {
-    currentUser = data.user;
-    showApp();
+async function handleGoogleLogin(response) {
+  const res = await apiPost('/api/auth/google', { token: response.credential });
+  if (res.success) { currentUser = res.user; enterApp(); }
+  else document.getElementById('google-err').textContent = 'Access denied. Use your @cuemath.com account.';
+}
+
+async function vendorLogin() {
+  const name = document.getElementById('v-name').value.trim();
+  const pass = document.getElementById('v-pass').value;
+  if (!name || !pass) { document.getElementById('vendor-err').textContent = 'Enter name and password'; return; }
+  const res = await apiPost('/api/auth/vendor', { name, password: pass });
+  if (res.success) {
+    currentUser = { name: res.vendor.name, email: '', role: res.vendor.type === 'cab' ? 'cab' : 'security', vendor_id: res.vendor.id };
+    enterApp();
   } else {
-    alert('Access denied. Use your Cuemath email.');
+    document.getElementById('vendor-err').textContent = 'Invalid credentials';
   }
-}
-
-function showApp() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('user-name-display').textContent = currentUser.name || currentUser.email;
-  loadMyPlan();
 }
 
 function logout() {
   currentUser = null;
-  isAdmin = false;
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('admin-panel').classList.add('section-hidden');
-  document.getElementById('admin-login-form').classList.remove('section-hidden');
+  document.getElementById('login-page').classList.remove('hidden');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('v-name').value = '';
+  document.getElementById('v-pass').value = '';
+  document.getElementById('vendor-err').textContent = '';
+  document.getElementById('google-err').textContent = '';
+  rosterWeekOffset = 0;
 }
 
-function showTab(tab) {
-  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-my-plan').style.display = 'none';
-
-  const adminTabContent = document.querySelectorAll('#tab-admin')[1] ||
-    document.querySelector('.content.section-hidden');
-
-  if (tab === 'my-plan') {
-    event.target.classList.add('active');
-    document.getElementById('tab-my-plan').style.display = 'block';
-  } else {
-    event.target.classList.add('active');
-    // Show admin content
-    document.querySelectorAll('.content')[1].classList.remove('section-hidden');
-    document.getElementById('tab-my-plan').style.display = 'none';
-  }
+function enterApp() {
+  document.getElementById('login-page').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('user-display').textContent = currentUser.name || currentUser.email;
+  const labels = { admin: 'Admin', employee: 'Employee', cab: 'Cab Company', security: 'Security Agency' };
+  const classes = { admin: 'badge-yellow', employee: 'badge-green', cab: 'badge-green', security: 'badge-green' };
+  const rb = document.getElementById('role-badge');
+  rb.textContent = labels[currentUser.role] || currentUser.role;
+  rb.className = 'badge ' + (classes[currentUser.role] || 'badge-gray');
+  renderView();
 }
 
-// Simpler tab logic
-document.addEventListener('DOMContentLoaded', () => {});
-
-function showTab(tab) {
-  const myPlan = document.getElementById('tab-my-plan');
-  const adminContent = document.getElementById('admin-content');
-  document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
-
-  if (tab === 'my-plan') {
-    myPlan.style.display = 'block';
-    if (adminContent) adminContent.style.display = 'none';
-    document.querySelector('[onclick="showTab(\'my-plan\')"]').classList.add('active');
-  } else {
-    myPlan.style.display = 'none';
-    if (adminContent) adminContent.style.display = 'block';
-    document.querySelector('[onclick="showTab(\'admin\')"]').classList.add('active');
-    loadRoutes();
-    loadRoster();
-  }
+function renderView() {
+  const role = currentUser.role;
+  if (role === 'admin') renderAdminView();
+  else if (role === 'employee') renderEmployeeView();
+  else if (role === 'cab') renderCabView();
+  else if (role === 'security') renderSecurityView();
 }
 
-async function loadMyPlan() {
-  if (!currentUser) return;
-  const dateFilter = document.getElementById('plan-date-filter').value;
-  const url = `/api/my-plan?email=${encodeURIComponent(currentUser.email)}`;
-  const res = await fetch(url);
-  let data = await res.json();
-
-  if (dateFilter) {
-    data = data.filter(e => e.shift_date === dateFilter);
-  }
-
-  const el = document.getElementById('my-plan-list');
-  if (!data.length) {
-    el.innerHTML = '<div class="empty">No travel plan found for your account.</div>';
-    return;
-  }
-
-  el.innerHTML = data.map(e => `
-    <div class="plan-card">
-      <div class="plan-header">
-        <div class="plan-date">📅 ${formatDate(e.shift_date)}</div>
-        <div class="route-badge">${e.route_name || 'No Route'}</div>
-      </div>
-      <div class="plan-grid">
-        <div class="plan-item"><label>Employee Name</label><p>${e.employee_name}</p></div>
-        <div class="plan-item"><label>Employee Code</label><p>${e.employee_code}</p></div>
-        <div class="plan-item"><label>Mobile</label><p>${e.mobile}</p></div>
-        <div class="plan-item"><label>Pick Location</label><p>${e.pick_location}</p></div>
-        <div class="plan-item"><label>Pick Time</label><p>${formatTime(e.pick_time)}</p></div>
-        <div class="plan-item"><label>Drop Time</label><p>${formatTime(e.drop_time)}</p></div>
-        <div class="plan-item"><label>Report Time</label><p>${formatTime(e.report_time)}</p></div>
-        <div class="plan-item"><label>Driver Name</label><p>${e.driver_name || '-'}</p></div>
-        <div class="plan-item"><label>Driver Mobile</label><p>${e.driver_mobile || '-'}</p></div>
-        <div class="plan-item"><label>Cab Type</label><p>${e.cab_type || '-'}</p></div>
-        <div class="plan-item"><label>Car Number</label><p>${e.car_number || '-'}</p></div>
-      </div>
+// ── ADMIN ──────────────────────────────────────────────────
+async function renderAdminView() {
+  document.getElementById('main-content').innerHTML = `
+    <div class="tabs">
+      <button class="tab-btn active" onclick="adminTab('roster',this)">Weekly Roster</button>
+      <button class="tab-btn" onclick="adminTab('routes',this)">Routes</button>
+      <button class="tab-btn" onclick="adminTab('employees',this)">Employees</button>
+      <button class="tab-btn" onclick="adminTab('vendors',this)">Vendors</button>
+      <button class="tab-btn" onclick="adminTab('cost',this)">Cost Report</button>
     </div>
-  `).join('');
+    <div id="tab-roster" class="tab-content active"></div>
+    <div id="tab-routes" class="tab-content"></div>
+    <div id="tab-employees" class="tab-content"></div>
+    <div id="tab-vendors" class="tab-content"></div>
+    <div id="tab-cost" class="tab-content"></div>`;
+  await Promise.all([loadRoutes(), loadEmployees(), loadVendors()]);
+  renderAdminRoster();
 }
 
-async function adminLogin() {
-  const pwd = document.getElementById('admin-pwd').value;
-  const res = await fetch('/api/admin/login', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({password: pwd})
-  });
-  const data = await res.json();
-  if (data.success) {
-    isAdmin = true;
-    document.getElementById('admin-login-form').classList.add('section-hidden');
-    document.getElementById('admin-panel').classList.remove('section-hidden');
-    document.getElementById('tab-admin').classList.remove('section-hidden');
-    loadRoutes();
-    loadRoster();
-  } else {
-    document.getElementById('admin-err').textContent = 'Wrong password';
+function adminTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'roster') renderAdminRoster();
+  else if (name === 'routes') renderAdminRoutes();
+  else if (name === 'employees') renderAdminEmployees();
+  else if (name === 'vendors') renderAdminVendors();
+  else if (name === 'cost') renderAdminCost();
+}
+
+async function loadRoutes() { routesCache = await fetch(API + '/api/admin/routes').then(r => r.json()).catch(() => []); }
+async function loadEmployees() { employeesCache = await fetch(API + '/api/admin/employees').then(r => r.json()).catch(() => []); }
+async function loadVendors() { vendorsCache = await fetch(API + '/api/admin/vendors').then(r => r.json()).catch(() => []); }
+
+function getWeekDates(offset) {
+  const today = new Date();
+  const day = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  const dates = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    dates.push(d.toISOString().split('T')[0]);
   }
+  return dates;
 }
 
-async function loadRoutes() {
-  const res = await fetch('/api/routes');
-  routesData = await res.json();
+function fmtDate(s) { return new Date(s + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' }); }
+function fmtDateLong(s) { return new Date(s + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }); }
 
-  // Populate selects
-  const opts = routesData.map(r => `<option value="${r.id}">${r.route_name}</option>`).join('');
-  document.getElementById('r-route').innerHTML = opts;
-  document.getElementById('edit-route').innerHTML = opts;
+async function renderAdminRoster() {
+  const dates = getWeekDates(rosterWeekOffset);
+  const roster = await fetch(`${API}/api/admin/roster?date_from=${dates[0]}&date_to=${dates[6]}`).then(r => r.json()).catch(() => []);
+  const totalCost = roster.reduce((s, r) => s + (parseFloat(r.cab_cost) || 0), 0);
+  const assigned = roster.filter(r => r.driver_name).length;
+  const guardAssigned = roster.filter(r => r.guard_name).length;
 
-  // Routes list
-  const el = document.getElementById('routes-list');
-  if (!routesData.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;">No routes yet.</p>'; return; }
-  el.innerHTML = `<table><thead><tr><th>Route Name</th><th>Description</th><th>Action</th></tr></thead><tbody>
-    ${routesData.map(r => `
-      <tr>
-        <td>${r.route_name}</td>
-        <td style="color:var(--muted);">${r.description || '-'}</td>
-        <td><button class="btn btn-danger btn-sm" onclick="deleteRoute(${r.id})">Delete</button></td>
-      </tr>`).join('')}
-  </tbody></table>`;
+  let html = `
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Week</div><div class="kpi-val" style="font-size:15px">${fmtDate(dates[0])} – ${fmtDate(dates[6])}</div></div>
+      <div class="kpi"><div class="kpi-label">Total Entries</div><div class="kpi-val">${roster.length}</div></div>
+      <div class="kpi"><div class="kpi-label">Cab Assigned</div><div class="kpi-val" style="color:var(--green)">${assigned}</div></div>
+      <div class="kpi"><div class="kpi-label">Guard Assigned</div><div class="kpi-val" style="color:var(--green)">${guardAssigned}</div></div>
+      <div class="kpi"><div class="kpi-label">Week Cost</div><div class="kpi-val">₹${totalCost.toLocaleString('en-IN')}</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset--;renderAdminRoster()">◀ Prev</button>
+        <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset=0;renderAdminRoster()">This Week</button>
+        <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset++;renderAdminRoster()">Next ▶</button>
+      </div>
+      <button class="btn-sm btn-sm-gold" onclick="openAddRosterModal()">+ Add to Roster</button>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+    <table><thead><tr>
+      <th>Date</th><th>Employee</th><th>Department</th><th>Route</th><th>Pick Up</th><th>Cab Details</th><th>Guard</th><th>Cost</th><th></th>
+    </tr></thead><tbody>`;
+
+  if (!roster.length) {
+    html += `<tr><td colspan="9" style="text-align:center;color:#555;padding:30px">No entries this week. Click "+ Add to Roster"</td></tr>`;
+  } else {
+    roster.forEach(r => {
+      const cab = r.driver_name ? `<span class="assigned">✓ ${r.driver_name}<br><small style="color:#888">${r.vehicle_type} ${r.vehicle_number}</small></span>` : `<span class="pending-text">Pending</span>`;
+      const guard = r.guard_name ? `<span class="assigned">✓ ${r.guard_name}</span>` : `<span class="pending-text">Pending</span>`;
+      html += `<tr>
+        <td><b>${fmtDate(r.shift_date)}</b></td>
+        <td><b>${r.emp_name}</b><br><small style="color:#666">${r.mobile || ''}</small></td>
+        <td style="color:#888;font-size:12px">${r.department || ''}</td>
+        <td><span style="color:var(--gold)">${r.route_name}</span><br><small style="color:#666">${r.pick_time || ''}</small></td>
+        <td style="font-size:12px">${r.pick_location || ''}</td>
+        <td style="font-size:12px">${cab}</td>
+        <td style="font-size:12px">${guard}</td>
+        <td style="color:var(--gold)">₹${(parseFloat(r.cab_cost) || 0).toLocaleString('en-IN')}</td>
+        <td><button class="action-btn danger" onclick="deleteRosterEntry(${r.id})">✕</button></td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('tab-roster').innerHTML = html;
 }
 
-async function addRoute() {
-  const name = document.getElementById('new-route-name').value.trim();
-  if (!name) { alert('Route name required'); return; }
-  await fetch('/api/admin/route', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({route_name: name, description: document.getElementById('new-route-desc').value})
-  });
-  document.getElementById('new-route-name').value = '';
-  document.getElementById('new-route-desc').value = '';
-  loadRoutes();
+function openAddRosterModal() {
+  if (!employeesCache.length || !routesCache.length) { showToast('Add Employees and Routes first'); return; }
+  const empOpts = employeesCache.map(e => `<option value="${e.id}">${e.emp_name} (${e.department || ''})</option>`).join('');
+  const routeOpts = routesCache.map(r => `<option value="${r.id}">${r.route_name}</option>`).join('');
+  const dateOpts = getWeekDates(rosterWeekOffset).map(d => {
+    return `<option value="${d}">${new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'short' })}</option>`;
+  }).join('');
+  showModal(`
+    <h3>Add to Roster</h3>
+    <div class="form-row"><label>Employee</label><select id="m-emp">${empOpts}</select></div>
+    <div class="form-row"><label>Route</label><select id="m-route">${routeOpts}</select></div>
+    <div class="form-row"><label>Shift Date</label><select id="m-date">${dateOpts}</select></div>
+    <div id="modal-err" class="err-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm btn-sm-gold" onclick="submitAddRoster()">Add</button>
+    </div>`);
+}
+
+async function submitAddRoster() {
+  const res = await apiPost('/api/admin/roster', { entries: [{ employee_id: document.getElementById('m-emp').value, route_id: document.getElementById('m-route').value, shift_date: document.getElementById('m-date').value }] });
+  if (res.success) { closeModal(); showToast('Added to roster'); renderAdminRoster(); }
+  else document.getElementById('modal-err').textContent = res.error || 'Already exists for this date';
+}
+
+async function deleteRosterEntry(id) {
+  if (!confirm('Remove this roster entry?')) return;
+  await apiPost('/api/admin/roster/delete', { id });
+  renderAdminRoster();
+}
+
+// ── ROUTES TAB ──
+async function renderAdminRoutes() {
+  await loadRoutes();
+  let html = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+      <button class="btn-sm btn-sm-gold" onclick="openRouteModal()">+ Add Route</button>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+    <table><thead><tr><th>Route</th><th>Pick Location</th><th>Drop Location</th><th>Pick Time</th><th>Drop Time</th><th>Report Time</th><th>Cost/Trip</th><th></th></tr></thead><tbody>`;
+  if (!routesCache.length) {
+    html += `<tr><td colspan="8" style="text-align:center;color:#555;padding:30px">No routes yet</td></tr>`;
+  } else {
+    routesCache.forEach(r => {
+      html += `<tr>
+        <td><b>${r.route_name}</b><br><small style="color:#666">${r.description || ''}</small></td>
+        <td>${r.pick_location || ''}</td><td>${r.drop_location || ''}</td>
+        <td>${r.pick_time || ''}</td><td>${r.drop_time || ''}</td><td>${r.report_time || ''}</td>
+        <td style="color:var(--gold);font-weight:700">₹${(parseFloat(r.cab_cost) || 0).toLocaleString('en-IN')}</td>
+        <td>
+          <button class="action-btn" onclick='openRouteModal(${JSON.stringify(r)})'>Edit</button>
+          <button class="action-btn danger" onclick="deleteRoute(${r.id})">Delete</button>
+        </td></tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('tab-routes').innerHTML = html;
+}
+
+function openRouteModal(r) {
+  if (!r) r = {};
+  showModal(`
+    <h3>${r.id ? 'Edit Route' : 'Add Route'}</h3>
+    <div class="form-row"><label>Route Name *</label><input id="r-name" value="${r.route_name || ''}"></div>
+    <div class="form-row"><label>Description</label><input id="r-desc" value="${r.description || ''}"></div>
+    <div class="two-col">
+      <div class="form-row"><label>Pick Location</label><input id="r-pick" value="${r.pick_location || ''}"></div>
+      <div class="form-row"><label>Drop Location</label><input id="r-drop" value="${r.drop_location || ''}"></div>
+    </div>
+    <div class="two-col">
+      <div class="form-row"><label>Pick Time</label><input id="r-ptime" value="${r.pick_time || ''}" placeholder="e.g. 10:00 PM"></div>
+      <div class="form-row"><label>Drop Time</label><input id="r-dtime" value="${r.drop_time || ''}" placeholder="e.g. 06:00 AM"></div>
+    </div>
+    <div class="two-col">
+      <div class="form-row"><label>Report Time</label><input id="r-rtime" value="${r.report_time || ''}" placeholder="e.g. 06:30 AM"></div>
+      <div class="form-row"><label>Cab Cost per Trip (₹)</label><input id="r-cost" type="number" value="${r.cab_cost || 0}"></div>
+    </div>
+    <div id="modal-err" class="err-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm btn-sm-gold" onclick="submitRoute(${r.id || 0})">Save</button>
+    </div>`);
+}
+
+async function submitRoute(id) {
+  const data = { route_name: document.getElementById('r-name').value.trim(), description: document.getElementById('r-desc').value.trim(), pick_location: document.getElementById('r-pick').value.trim(), drop_location: document.getElementById('r-drop').value.trim(), pick_time: document.getElementById('r-ptime').value.trim(), drop_time: document.getElementById('r-dtime').value.trim(), report_time: document.getElementById('r-rtime').value.trim(), cab_cost: parseFloat(document.getElementById('r-cost').value) || 0 };
+  if (!data.route_name) { document.getElementById('modal-err').textContent = 'Route name required'; return; }
+  if (id) data.id = id;
+  const res = await apiPost(id ? '/api/admin/routes/update' : '/api/admin/routes', data);
+  if (res.success) { closeModal(); showToast(id ? 'Route updated' : 'Route added'); await loadRoutes(); renderAdminRoutes(); }
+  else document.getElementById('modal-err').textContent = res.error || 'Error';
 }
 
 async function deleteRoute(id) {
   if (!confirm('Delete this route?')) return;
-  await fetch('/api/admin/route/delete', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({id})
-  });
-  loadRoutes();
+  await apiPost('/api/admin/routes/delete', { id });
+  showToast('Route deleted'); await loadRoutes(); renderAdminRoutes();
 }
 
-async function addToRoster() {
-  const payload = {
-    employee_name: document.getElementById('r-name').value.trim(),
-    employee_code: document.getElementById('r-code').value.trim(),
-    mobile: document.getElementById('r-mobile').value.trim(),
-    email: document.getElementById('r-email').value.trim(),
-    route_id: document.getElementById('r-route').value,
-    pick_location: document.getElementById('r-pick-loc').value.trim(),
-    pick_time: document.getElementById('r-pick-time').value,
-    drop_time: document.getElementById('r-drop-time').value,
-    report_time: document.getElementById('r-report-time').value,
-    shift_date: document.getElementById('r-shift-date').value,
-    driver_name: document.getElementById('r-driver-name').value.trim(),
-    driver_mobile: document.getElementById('r-driver-mobile').value.trim(),
-    cab_type: document.getElementById('r-cab-type').value.trim(),
-    car_number: document.getElementById('r-car-number').value.trim(),
-  };
-  if (!payload.employee_name || !payload.employee_code || !payload.mobile || !payload.shift_date) {
-    alert('Please fill all required fields'); return;
+// ── EMPLOYEES TAB ──
+async function renderAdminEmployees() {
+  await loadEmployees();
+  let html = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+      <button class="btn-sm btn-sm-gold" onclick="openEmpModal()">+ Add Employee</button>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+    <table><thead><tr><th>Name</th><th>Code</th><th>Email</th><th>Mobile</th><th>Department</th><th></th></tr></thead><tbody>`;
+  if (!employeesCache.length) {
+    html += `<tr><td colspan="6" style="text-align:center;color:#555;padding:30px">No employees yet</td></tr>`;
+  } else {
+    employeesCache.forEach(e => {
+      html += `<tr>
+        <td><b>${e.emp_name}</b></td><td style="color:#888">${e.emp_code || ''}</td>
+        <td>${e.email}</td><td>${e.mobile || ''}</td><td>${e.department || ''}</td>
+        <td>
+          <button class="action-btn" onclick='openEmpModal(${JSON.stringify(e)})'>Edit</button>
+          <button class="action-btn danger" onclick="deleteEmp(${e.id})">Delete</button>
+        </td></tr>`;
+    });
   }
-  await fetch('/api/admin/roster', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(payload)
-  });
-  ['r-name','r-code','r-mobile','r-email','r-pick-loc','r-pick-time','r-drop-time','r-report-time','r-shift-date','r-driver-name','r-driver-mobile','r-cab-type','r-car-number']
-    .forEach(id => document.getElementById(id).value = '');
-  loadRoster();
+  html += `</tbody></table></div>`;
+  document.getElementById('tab-employees').innerHTML = html;
 }
 
-async function loadRoster() {
-  const date = document.getElementById('roster-date-filter').value;
-  const url = date ? `/api/roster?date=${date}` : '/api/roster';
-  const res = await fetch(url);
-  const data = await res.json();
+function openEmpModal(e) {
+  if (!e) e = {};
+  showModal(`
+    <h3>${e.id ? 'Edit Employee' : 'Add Female Employee'}</h3>
+    <div class="two-col">
+      <div class="form-row"><label>Full Name *</label><input id="e-name" value="${e.emp_name || ''}"></div>
+      <div class="form-row"><label>Employee Code</label><input id="e-code" value="${e.emp_code || ''}"></div>
+    </div>
+    <div class="form-row"><label>Email (Company Gmail) *</label><input id="e-email" value="${e.email || ''}" placeholder="name@cuemath.com"></div>
+    <div class="two-col">
+      <div class="form-row"><label>Mobile *</label><input id="e-mobile" value="${e.mobile || ''}"></div>
+      <div class="form-row"><label>Department</label><input id="e-dept" value="${e.department || ''}"></div>
+    </div>
+    <div id="modal-err" class="err-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm btn-sm-gold" onclick="submitEmp(${e.id || 0})">Save</button>
+    </div>`);
+}
 
-  const tbody = document.getElementById('roster-tbody');
-  if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="10" class="empty">No roster entries found.</td></tr>';
+async function submitEmp(id) {
+  const data = { emp_name: document.getElementById('e-name').value.trim(), emp_code: document.getElementById('e-code').value.trim(), email: document.getElementById('e-email').value.trim().toLowerCase(), mobile: document.getElementById('e-mobile').value.trim(), department: document.getElementById('e-dept').value.trim() };
+  if (!data.emp_name || !data.email) { document.getElementById('modal-err').textContent = 'Name and email required'; return; }
+  if (id) data.id = id;
+  const res = await apiPost(id ? '/api/admin/employees/update' : '/api/admin/employees', data);
+  if (res.success) { closeModal(); showToast(id ? 'Employee updated' : 'Employee added'); await loadEmployees(); renderAdminEmployees(); }
+  else document.getElementById('modal-err').textContent = res.error || 'Error';
+}
+
+async function deleteEmp(id) {
+  if (!confirm('Delete this employee?')) return;
+  await apiPost('/api/admin/employees/delete', { id });
+  showToast('Employee deleted'); await loadEmployees(); renderAdminEmployees();
+}
+
+// ── VENDORS TAB ──
+async function renderAdminVendors() {
+  await loadVendors();
+  let html = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+      <button class="btn-sm btn-sm-gold" onclick="openVendorModal()">+ Add Vendor</button>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+    <table><thead><tr><th>Name</th><th>Type</th><th>Email</th><th>Mobile</th><th></th></tr></thead><tbody>`;
+  if (!vendorsCache.length) {
+    html += `<tr><td colspan="5" style="text-align:center;color:#555;padding:30px">No vendors yet</td></tr>`;
+  } else {
+    vendorsCache.forEach(v => {
+      const badge = v.type === 'cab' ? 'badge-yellow' : 'badge-green';
+      const label = v.type === 'cab' ? 'Cab Company' : 'Security Agency';
+      html += `<tr><td><b>${v.name}</b></td><td><span class="badge ${badge}">${label}</span></td><td>${v.email || ''}</td><td>${v.mobile || ''}</td><td><button class="action-btn danger" onclick="deleteVendor(${v.id})">Delete</button></td></tr>`;
+    });
+  }
+  html += `</tbody></table></div>
+  <div class="card" style="margin-top:16px;font-size:13px;color:#888">
+    <b style="color:#fff">Login Instructions:</b> Vendors login with their <b style="color:var(--gold)">Company Name</b> + Password set above.
+  </div>`;
+  document.getElementById('tab-vendors').innerHTML = html;
+}
+
+function openVendorModal() {
+  showModal(`
+    <h3>Add Vendor</h3>
+    <div class="form-row"><label>Company Name *</label><input id="v-vname"></div>
+    <div class="form-row"><label>Type *</label><select id="v-type"><option value="cab">Cab Company</option><option value="security">Security Agency</option></select></div>
+    <div class="two-col">
+      <div class="form-row"><label>Email</label><input id="v-vemail" type="email"></div>
+      <div class="form-row"><label>Mobile</label><input id="v-vmobile"></div>
+    </div>
+    <div class="form-row"><label>Login Password *</label><input id="v-vpass" type="password" placeholder="Set a secure password"></div>
+    <div id="modal-err" class="err-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm btn-sm-gold" onclick="submitVendor()">Add</button>
+    </div>`);
+}
+
+async function submitVendor() {
+  const data = { name: document.getElementById('v-vname').value.trim(), type: document.getElementById('v-type').value, email: document.getElementById('v-vemail').value.trim(), mobile: document.getElementById('v-vmobile').value.trim(), password: document.getElementById('v-vpass').value };
+  if (!data.name || !data.password) { document.getElementById('modal-err').textContent = 'Name and password required'; return; }
+  const res = await apiPost('/api/admin/vendors', data);
+  if (res.success) { closeModal(); showToast('Vendor added'); await loadVendors(); renderAdminVendors(); }
+  else document.getElementById('modal-err').textContent = res.error || 'Error';
+}
+
+async function deleteVendor(id) {
+  if (!confirm('Delete this vendor?')) return;
+  await apiPost('/api/admin/vendors/delete', { id });
+  showToast('Vendor deleted'); await loadVendors(); renderAdminVendors();
+}
+
+// ── COST REPORT ──
+async function renderAdminCost() {
+  const dates = getWeekDates(rosterWeekOffset);
+  const roster = await fetch(`${API}/api/admin/roster?date_from=${dates[0]}&date_to=${dates[6]}`).then(r => r.json()).catch(() => []);
+  const totalCost = roster.reduce((s, r) => s + (parseFloat(r.cab_cost) || 0), 0);
+  const byRoute = {};
+  roster.forEach(r => {
+    if (!byRoute[r.route_name]) byRoute[r.route_name] = { count: 0, cost: 0, r };
+    byRoute[r.route_name].count++;
+    byRoute[r.route_name].cost += parseFloat(r.cab_cost) || 0;
+  });
+
+  let html = `
+    <div class="kpi-row">
+      <div class="kpi"><div class="kpi-label">Total Trips</div><div class="kpi-val">${roster.length}</div></div>
+      <div class="kpi"><div class="kpi-label">Total Cost</div><div class="kpi-val">₹${totalCost.toLocaleString('en-IN')}</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset--;renderAdminCost()">◀ Prev Week</button>
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset=0;renderAdminCost()">This Week</button>
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset++;renderAdminCost()">Next Week ▶</button>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+    <table><thead><tr><th>Route</th><th>Pick Location</th><th>Drop Location</th><th>Trips This Week</th><th>Cost per Trip</th><th>Total Cost</th></tr></thead><tbody>`;
+
+  if (!Object.keys(byRoute).length) {
+    html += `<tr><td colspan="6" style="text-align:center;color:#555;padding:30px">No data for this week</td></tr>`;
+  } else {
+    Object.values(byRoute).forEach(({ count, cost, r }) => {
+      html += `<tr>
+        <td><b>${r.route_name}</b></td><td>${r.pick_location || ''}</td><td>${r.drop_location || ''}</td>
+        <td style="text-align:center">${count}</td>
+        <td style="color:var(--gold)">₹${(parseFloat(r.cab_cost) || 0).toLocaleString('en-IN')}</td>
+        <td style="color:var(--gold);font-weight:700">₹${cost.toLocaleString('en-IN')}</td>
+      </tr>`;
+    });
+    html += `<tr style="background:#111"><td colspan="5" style="text-align:right;font-weight:700;color:#fff">Total Weekly Cost:</td><td style="color:var(--gold);font-weight:700;font-size:16px">₹${totalCost.toLocaleString('en-IN')}</td></tr>`;
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('tab-cost').innerHTML = html;
+}
+
+// ── CAB COMPANY VIEW ──────────────────────────────────────
+async function renderCabView() {
+  document.getElementById('main-content').innerHTML = `
+    <div class="tabs">
+      <button class="tab-btn active" onclick="cabTab('pending',this)">Pending Assignments</button>
+      <button class="tab-btn" onclick="cabTab('all',this)">All Roster</button>
+    </div>
+    <div id="tab-pending" class="tab-content active"></div>
+    <div id="tab-all" class="tab-content"></div>`;
+  renderCabPending();
+}
+
+function cabTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'pending') renderCabPending(); else renderCabAll();
+}
+
+async function renderCabPending() {
+  const dates = getWeekDates(rosterWeekOffset);
+  const roster = await fetch(`${API}/api/vendor/roster?vendor_id=${currentUser.vendor_id}&type=cab&date_from=${dates[0]}&date_to=${dates[6]}`).then(r => r.json()).catch(() => []);
+  const pending = roster.filter(r => !r.driver_name);
+  let html = `
+    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset--;renderCabPending()">◀ Prev</button>
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset=0;renderCabPending()">This Week</button>
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset++;renderCabPending()">Next ▶</button>
+      <span style="color:#888;font-size:13px">${pending.length} pending</span>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+    <table><thead><tr><th>Date</th><th>Employee</th><th>Mobile</th><th>Route</th><th>Pick Up</th><th>Drop</th><th>Action</th></tr></thead><tbody>`;
+  if (!pending.length) {
+    html += `<tr><td colspan="7" style="text-align:center;color:var(--green);padding:30px">All assignments done for this week ✓</td></tr>`;
+  } else {
+    pending.forEach(r => {
+      html += `<tr>
+        <td><b>${fmtDate(r.shift_date)}</b></td>
+        <td><b>${r.emp_name}</b><br><small style="color:#888">${r.department || ''}</small></td>
+        <td>${r.mobile || ''}</td>
+        <td style="color:var(--gold)">${r.route_name}</td>
+        <td style="font-size:12px">${r.pick_location || ''} ${r.pick_time ? '| ' + r.pick_time : ''}</td>
+        <td style="font-size:12px">${r.drop_location || ''}</td>
+        <td><button class="btn-sm btn-sm-gold" onclick="openCabAssignModal(${r.id},'${r.emp_name}','${r.shift_date}')">Assign Cab</button></td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('tab-pending').innerHTML = html;
+}
+
+async function renderCabAll() {
+  const dates = getWeekDates(rosterWeekOffset);
+  const roster = await fetch(`${API}/api/vendor/roster?vendor_id=${currentUser.vendor_id}&type=cab&date_from=${dates[0]}&date_to=${dates[6]}`).then(r => r.json()).catch(() => []);
+  let html = `
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset--;renderCabAll()">◀ Prev</button>
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset=0;renderCabAll()">This Week</button>
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset++;renderCabAll()">Next ▶</button>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+    <table><thead><tr><th>Date</th><th>Employee</th><th>Route</th><th>Driver</th><th>Vehicle</th><th>Status</th><th></th></tr></thead><tbody>`;
+  if (!roster.length) {
+    html += `<tr><td colspan="7" style="text-align:center;color:#555;padding:30px">No roster this week</td></tr>`;
+  } else {
+    roster.forEach(r => {
+      const status = r.driver_name ? `<span class="badge badge-green">Assigned</span>` : `<span class="badge badge-red">Pending</span>`;
+      html += `<tr>
+        <td>${fmtDate(r.shift_date)}</td><td><b>${r.emp_name}</b></td>
+        <td style="color:var(--gold)">${r.route_name}</td>
+        <td>${r.driver_name || '—'}<br><small style="color:#888">${r.driver_mobile || ''}</small></td>
+        <td style="font-size:12px">${r.vehicle_type || ''} ${r.vehicle_number || ''}</td>
+        <td>${status}</td>
+        <td><button class="action-btn" onclick="openCabAssignModal(${r.id},'${r.emp_name}','${r.shift_date}')">Edit</button></td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('tab-all').innerHTML = html;
+}
+
+function openCabAssignModal(rosterId, empName, shiftDate) {
+  showModal(`
+    <h3>Assign Cab</h3>
+    <div style="margin-bottom:16px;color:#888;font-size:13px">Employee: <b style="color:#fff">${empName}</b> | Date: <b style="color:var(--gold)">${shiftDate}</b></div>
+    <div class="two-col">
+      <div class="form-row"><label>Driver Name *</label><input id="ca-dname"></div>
+      <div class="form-row"><label>Driver Mobile *</label><input id="ca-dmobile" placeholder="10-digit"></div>
+    </div>
+    <div class="two-col">
+      <div class="form-row"><label>Vehicle Type</label><input id="ca-vtype" placeholder="e.g. Swift Dzire"></div>
+      <div class="form-row"><label>Vehicle Number</label><input id="ca-vnum" placeholder="e.g. DL 01 AB 1234"></div>
+    </div>
+    <div id="modal-err" class="err-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm btn-sm-gold" onclick="submitCabAssign(${rosterId})">Assign &amp; Notify</button>
+    </div>`);
+}
+
+async function submitCabAssign(rosterId) {
+  const data = { roster_id: rosterId, vendor_id: currentUser.vendor_id, driver_name: document.getElementById('ca-dname').value.trim(), driver_mobile: document.getElementById('ca-dmobile').value.trim(), vehicle_type: document.getElementById('ca-vtype').value.trim(), vehicle_number: document.getElementById('ca-vnum').value.trim() };
+  if (!data.driver_name || !data.driver_mobile) { document.getElementById('modal-err').textContent = 'Driver name and mobile required'; return; }
+  const res = await apiPost('/api/cab/assign', data);
+  if (res.success) { closeModal(); showToast('Cab assigned! Employee notified via email.'); renderCabPending(); }
+  else document.getElementById('modal-err').textContent = res.error || 'Error';
+}
+
+// ── SECURITY AGENCY VIEW ──────────────────────────────────
+async function renderSecurityView() {
+  document.getElementById('main-content').innerHTML = `
+    <div class="tabs">
+      <button class="tab-btn active" onclick="secTab('pending',this)">Pending Guards</button>
+      <button class="tab-btn" onclick="secTab('all',this)">All Roster</button>
+    </div>
+    <div id="tab-pending" class="tab-content active"></div>
+    <div id="tab-all" class="tab-content"></div>`;
+  renderSecPending();
+}
+
+function secTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'pending') renderSecPending(); else renderSecAll();
+}
+
+async function renderSecPending() {
+  const dates = getWeekDates(rosterWeekOffset);
+  const roster = await fetch(`${API}/api/vendor/roster?vendor_id=${currentUser.vendor_id}&type=security&date_from=${dates[0]}&date_to=${dates[6]}`).then(r => r.json()).catch(() => []);
+  const pending = roster.filter(r => !r.guard_name);
+  let html = `
+    <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap">
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset--;renderSecPending()">◀ Prev</button>
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset=0;renderSecPending()">This Week</button>
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset++;renderSecPending()">Next ▶</button>
+      <span style="color:#888;font-size:13px">${pending.length} pending</span>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+    <table><thead><tr><th>Date</th><th>Employee</th><th>Route</th><th>Pick Location</th><th>Drop Location</th><th>Action</th></tr></thead><tbody>`;
+  if (!pending.length) {
+    html += `<tr><td colspan="6" style="text-align:center;color:var(--green);padding:30px">All guards assigned for this week ✓</td></tr>`;
+  } else {
+    pending.forEach(r => {
+      html += `<tr>
+        <td><b>${fmtDate(r.shift_date)}</b></td><td><b>${r.emp_name}</b></td>
+        <td style="color:var(--gold)">${r.route_name}</td>
+        <td>${r.pick_location || ''} ${r.pick_time ? '| ' + r.pick_time : ''}</td>
+        <td>${r.drop_location || ''}</td>
+        <td><button class="btn-sm btn-sm-gold" onclick="openSecAssignModal(${r.id},'${r.emp_name}','${r.shift_date}')">Assign Guard</button></td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('tab-pending').innerHTML = html;
+}
+
+async function renderSecAll() {
+  const dates = getWeekDates(rosterWeekOffset);
+  const roster = await fetch(`${API}/api/vendor/roster?vendor_id=${currentUser.vendor_id}&type=security&date_from=${dates[0]}&date_to=${dates[6]}`).then(r => r.json()).catch(() => []);
+  let html = `
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset--;renderSecAll()">◀ Prev</button>
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset=0;renderSecAll()">This Week</button>
+      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset++;renderSecAll()">Next ▶</button>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+    <table><thead><tr><th>Date</th><th>Employee</th><th>Route</th><th>Guard Name</th><th>Guard Mobile</th><th>Status</th><th></th></tr></thead><tbody>`;
+  if (!roster.length) {
+    html += `<tr><td colspan="7" style="text-align:center;color:#555;padding:30px">No roster this week</td></tr>`;
+  } else {
+    roster.forEach(r => {
+      const status = r.guard_name ? `<span class="badge badge-green">Assigned</span>` : `<span class="badge badge-red">Pending</span>`;
+      html += `<tr>
+        <td>${fmtDate(r.shift_date)}</td><td><b>${r.emp_name}</b></td>
+        <td style="color:var(--gold)">${r.route_name}</td>
+        <td>${r.guard_name || '—'}</td><td>${r.guard_mobile || ''}</td>
+        <td>${status}</td>
+        <td><button class="action-btn" onclick="openSecAssignModal(${r.id},'${r.emp_name}','${r.shift_date}')">Edit</button></td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  document.getElementById('tab-all').innerHTML = html;
+}
+
+function openSecAssignModal(rosterId, empName, shiftDate) {
+  showModal(`
+    <h3>Assign Security Guard</h3>
+    <div style="margin-bottom:16px;color:#888;font-size:13px">Employee: <b style="color:#fff">${empName}</b> | Date: <b style="color:var(--gold)">${shiftDate}</b></div>
+    <div class="two-col">
+      <div class="form-row"><label>Guard Name *</label><input id="sa-gname"></div>
+      <div class="form-row"><label>Guard Mobile *</label><input id="sa-gmobile" placeholder="10-digit"></div>
+    </div>
+    <div id="modal-err" class="err-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm btn-sm-gold" onclick="submitSecAssign(${rosterId})">Assign &amp; Notify</button>
+    </div>`);
+}
+
+async function submitSecAssign(rosterId) {
+  const data = { roster_id: rosterId, vendor_id: currentUser.vendor_id, guard_name: document.getElementById('sa-gname').value.trim(), guard_mobile: document.getElementById('sa-gmobile').value.trim() };
+  if (!data.guard_name || !data.guard_mobile) { document.getElementById('modal-err').textContent = 'Guard name and mobile required'; return; }
+  const res = await apiPost('/api/security/assign', data);
+  if (res.success) { closeModal(); showToast('Guard assigned! Employee notified via email.'); renderSecPending(); }
+  else document.getElementById('modal-err').textContent = res.error || 'Error';
+}
+
+// ── EMPLOYEE VIEW ─────────────────────────────────────────
+async function renderEmployeeView() {
+  document.getElementById('main-content').innerHTML = `<div id="emp-plan"><div style="color:#888;padding:40px;text-align:center">Loading your schedule...</div></div>`;
+  const plan = await fetch(`${API}/api/employee/plan?email=${encodeURIComponent(currentUser.email)}`).then(r => r.json()).catch(() => []);
+
+  if (!plan.length) {
+    document.getElementById('emp-plan').innerHTML = `
+      <div style="text-align:center;padding:60px;color:#555">
+        <div style="font-size:48px;margin-bottom:16px">🚗</div>
+        <div style="font-size:18px;color:#888">No upcoming shifts scheduled</div>
+        <div style="font-size:13px;color:#555;margin-top:8px">Contact HR to get added to the roster</div>
+      </div>`;
     return;
   }
-  tbody.innerHTML = data.map(e => `
-    <tr>
-      <td>${e.employee_name}</td>
-      <td>${e.employee_code}</td>
-      <td>${e.mobile}</td>
-      <td>${e.route_name || '-'}</td>
-      <td>${e.pick_location}</td>
-      <td>${formatTime(e.pick_time)}</td>
-      <td>${formatTime(e.drop_time)}</td>
-      <td>${formatTime(e.report_time)}</td>
-      <td>${e.driver_name || '-'}<br><span style="color:var(--muted);font-size:11px;">${e.driver_mobile || ''}</span></td>
-      <td>${e.car_number || '-'}<br><span style="color:var(--muted);font-size:11px;">${e.cab_type || ''}</span></td>
-      <td>${formatDate(e.shift_date)}</td>
-      <td style="display:flex;gap:6px;">
-        <button class="btn btn-outline btn-sm" onclick="openEdit(${JSON.stringify(e).replace(/"/g,'&quot;')})">Edit</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteRoster(${e.id})">Del</button>
-      </td>
-    </tr>`).join('');
-}
 
-function openEdit(e) {
-  document.getElementById('edit-id').value = e.id;
-  document.getElementById('edit-name').value = e.employee_name;
-  document.getElementById('edit-code').value = e.employee_code;
-  document.getElementById('edit-mobile').value = e.mobile;
-  document.getElementById('edit-email').value = e.email || '';
-  document.getElementById('edit-route').value = e.route_id;
-  document.getElementById('edit-pick-loc').value = e.pick_location;
-  document.getElementById('edit-pick-time').value = e.pick_time;
-  document.getElementById('edit-drop-time').value = e.drop_time;
-  document.getElementById('edit-report-time').value = e.report_time;
-  document.getElementById('edit-shift-date').value = e.shift_date;
-  document.getElementById('edit-driver-name').value = e.driver_name || '';
-  document.getElementById('edit-driver-mobile').value = e.driver_mobile || '';
-  document.getElementById('edit-cab-type').value = e.cab_type || '';
-  document.getElementById('edit-car-number').value = e.car_number || '';
-  document.getElementById('edit-modal').classList.add('open');
-}
-
-function closeModal() {
-  document.getElementById('edit-modal').classList.remove('open');
-}
-
-async function saveEdit() {
-  const payload = {
-    id: document.getElementById('edit-id').value,
-    employee_name: document.getElementById('edit-name').value,
-    employee_code: document.getElementById('edit-code').value,
-    mobile: document.getElementById('edit-mobile').value,
-    email: document.getElementById('edit-email').value,
-    route_id: document.getElementById('edit-route').value,
-    pick_location: document.getElementById('edit-pick-loc').value,
-    pick_time: document.getElementById('edit-pick-time').value,
-    drop_time: document.getElementById('edit-drop-time').value,
-    report_time: document.getElementById('edit-report-time').value,
-    shift_date: document.getElementById('edit-shift-date').value,
-    driver_name: document.getElementById('edit-driver-name').value,
-    driver_mobile: document.getElementById('edit-driver-mobile').value,
-    cab_type: document.getElementById('edit-cab-type').value,
-    car_number: document.getElementById('edit-car-number').value,
-  };
-  await fetch('/api/admin/roster/edit', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(payload)
+  let html = `<h2 style="color:var(--gold);margin-bottom:20px">Your Night Shift Schedule</h2>`;
+  plan.forEach(r => {
+    const cab = r.driver_name
+      ? `<div class="plan-row"><span class="plan-icon">🚗</span><span class="plan-label">Driver</span><b>${r.driver_name}</b> &nbsp;|&nbsp; ${r.driver_mobile}</div>
+         <div class="plan-row"><span class="plan-icon">🚘</span><span class="plan-label">Vehicle</span>${r.vehicle_type} &nbsp;|&nbsp; <b>${r.vehicle_number}</b></div>`
+      : `<div class="plan-row"><span class="plan-icon">🚗</span><span class="plan-label">Cab</span><span style="color:var(--gold)">Being arranged...</span></div>`;
+    const guard = r.guard_name
+      ? `<div class="plan-row"><span class="plan-icon">🛡️</span><span class="plan-label">Guard</span><b>${r.guard_name}</b> &nbsp;|&nbsp; ${r.guard_mobile}</div>`
+      : `<div class="plan-row"><span class="plan-icon">🛡️</span><span class="plan-label">Guard</span><span style="color:var(--gold)">Being arranged...</span></div>`;
+    html += `
+      <div class="plan-card">
+        <div class="plan-date">${fmtDateLong(r.shift_date)}</div>
+        <div class="plan-row"><span class="plan-icon">📍</span><span class="plan-label">Route</span><b style="color:var(--gold)">${r.route_name}</b></div>
+        <div class="plan-row"><span class="plan-icon">⬆️</span><span class="plan-label">Pick Up</span>${r.pick_location || '—'} &nbsp;|&nbsp; <b>${r.pick_time || ''}</b></div>
+        <div class="plan-row"><span class="plan-icon">⬇️</span><span class="plan-label">Drop</span>${r.drop_location || '—'} &nbsp;|&nbsp; <b>${r.drop_time || ''}</b></div>
+        <div class="plan-row"><span class="plan-icon">🏢</span><span class="plan-label">Report By</span>${r.report_time || '—'}</div>
+        <hr style="border-color:#2a2a2a;margin:12px 0">
+        ${cab}
+        ${guard}
+      </div>`;
   });
-  closeModal();
-  loadRoster();
+  document.getElementById('emp-plan').innerHTML = html;
 }
 
-async function deleteRoster(id) {
-  if (!confirm('Delete this entry?')) return;
-  await fetch('/api/admin/roster/delete', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({id})
-  });
-  loadRoster();
+// ── UTILS ─────────────────────────────────────────────────
+async function apiPost(endpoint, data) {
+  try {
+    return await fetch(API + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());
+  } catch(e) { return { success: false, error: e.message }; }
 }
 
-function formatTime(t) {
-  if (!t) return '-';
-  const [h, m] = t.split(':');
-  const hr = parseInt(h);
-  return `${hr > 12 ? hr-12 : hr || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
+function showModal(html) {
+  const old = document.getElementById('modal-overlay');
+  if (old) old.remove();
+  const div = document.createElement('div');
+  div.className = 'modal-overlay';
+  div.id = 'modal-overlay';
+  div.innerHTML = `<div class="modal">${html}</div>`;
+  div.addEventListener('click', e => { if (e.target === div) closeModal(); });
+  document.body.appendChild(div);
 }
 
-function formatDate(d) {
-  if (!d) return '-';
-  const dt = new Date(d + 'T00:00:00');
-  return dt.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+function closeModal() { const m = document.getElementById('modal-overlay'); if (m) m.remove(); }
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
 }
+
+window.addEventListener('load', initGoogle);
 </script>
 </body>
 </html>
