@@ -15,7 +15,7 @@ ALLOWED_DOMAIN = 'cuemath.com'
 def get_db():
     if not DATABASE_URL:
         raise Exception('DATABASE_URL not set')
-    return psycopg2.connect(DATABASE_URL)
+    return psycopg2.connect(DATABASE_URL, connect_timeout=10)
 
 
 def hash_pw(pw):
