@@ -13,6 +13,8 @@ ALLOWED_DOMAIN = 'cuemath.com'
 
 
 def get_db():
+    if not DATABASE_URL:
+        raise Exception('DATABASE_URL not set')
     return psycopg2.connect(DATABASE_URL)
 
 
@@ -484,6 +486,10 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    init_db()
+    try:
+        init_db()
+        print('Database initialized')
+    except Exception as e:
+        print(f'DB init warning: {e}')
     print(f'Server running on port {PORT}')
     HTTPServer(('0.0.0.0', PORT), Handler).serve_forever()
