@@ -8,7 +8,7 @@ GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
 BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
 MSG91_AUTH_KEY = os.environ.get('MSG91_AUTH_KEY', '')
 MSG91_SENDER = os.environ.get('MSG91_SENDER', '')
-ADMIN_EMAILS = [e.strip().lower() for e in os.environ.get('ADMIN_EMAILS', 'hr@cuemath.com,ajay.yadav@cuemath.com').split(',')]
+ADMIN_EMAILS = [e.strip().lower() for e in os.environ.get('ADMIN_EMAILS', 'hr@cuemath.com,ajay.yadav@cuemath.com,ravindra.rajput@cuemath.com,deepak.tyagi@cuemath.com').split(',')]
 ALLOWED_DOMAIN = 'cuemath.com'
 
 
