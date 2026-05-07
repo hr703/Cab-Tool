@@ -343,20 +343,23 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         path = urllib.parse.urlparse(self.path).path
         body = self.read_body()
+
+        # Auth endpoints don't need DB
+        if path == '/api/auth/google':
+            token = body.get('token', '')
+            print('Auth attempt, token len:', len(token))
+            user, dbg = verify_google_token_debug(token)
+            if user:
+                self.send_json({'success': True, 'user': user})
+            else:
+                self.send_json({'success': False, 'error': 'Unauthorized', 'debug': dbg}, 401)
+            return
+
         conn = get_db()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         try:
-            if path == '/api/auth/google':
-                token = body.get('token', '')
-                print('Auth attempt, token len:', len(token))
-                user, dbg = verify_google_token_debug(token)
-                if user:
-                    self.send_json({'success': True, 'user': user})
-                else:
-                    self.send_json({'success': False, 'error': 'Unauthorized', 'debug': dbg}, 401)
-
-            elif path == '/api/auth/vendor':
+            if path == '/api/auth/vendor':
                 name = body.get('name', '').strip()
                 pw = body.get('password', '')
                 ph = hash_pw(pw)
