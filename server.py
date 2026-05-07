@@ -61,6 +61,7 @@ def init_db():
             email TEXT NOT NULL,
             mobile TEXT DEFAULT '',
             department TEXT DEFAULT '',
+            pickup_address TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT NOW()
         )
     ''')
@@ -96,6 +97,10 @@ def init_db():
             assigned_at TIMESTAMP DEFAULT NOW()
         )
     ''')
+    # Migration: add pickup_address if not exists
+    cur.execute("""
+        ALTER TABLE night_employees ADD COLUMN IF NOT EXISTS pickup_address TEXT DEFAULT ''
+    """)
     conn.commit()
     cur.close()
     conn.close()
@@ -369,8 +374,8 @@ def build_excel(rows, employees=None):
     # ── Sheet 3: Employee Master ──────────────────────────────────────
     if employees:
         ws3 = wb.create_sheet('Employee Master')
-        emp_headers = ['Emp Code', 'Name', 'Department', 'Mobile', 'Email']
-        emp_widths  = [12, 24, 18, 15, 30]
+        emp_headers = ['Emp Code', 'Name', 'Department', 'Mobile', 'Email', 'Pickup Address']
+        emp_widths  = [12, 24, 18, 15, 30, 30]
         ws3.append(emp_headers)
         for i, cell in enumerate(ws3[1], 1):
             cell.font = header_font
@@ -382,7 +387,8 @@ def build_excel(rows, employees=None):
         for idx, e in enumerate(sorted(employees, key=lambda x: x.get('emp_name', '')), 2):
             ws3.append([
                 e.get('emp_code', ''), e.get('emp_name', ''),
-                e.get('department', ''), e.get('mobile', ''), e.get('email', '')
+                e.get('department', ''), e.get('mobile', ''), e.get('email', ''),
+                e.get('pickup_address', '')
             ])
             fill = alt_fill if idx % 2 == 0 else None
             for cell in ws3[idx]:
@@ -582,20 +588,20 @@ class Handler(BaseHTTPRequestHandler):
 
             elif path == '/api/admin/employees':
                 cur.execute('''
-                    INSERT INTO night_employees (emp_name, emp_code, email, mobile, department)
-                    VALUES (%s,%s,%s,%s,%s) RETURNING id
+                    INSERT INTO night_employees (emp_name, emp_code, email, mobile, department, pickup_address)
+                    VALUES (%s,%s,%s,%s,%s,%s) RETURNING id
                 ''', (body['emp_name'], body.get('emp_code',''), body['email'],
-                      body.get('mobile',''), body.get('department','')))
+                      body.get('mobile',''), body.get('department',''), body.get('pickup_address','')))
                 new_id = cur.fetchone()['id']
                 conn.commit()
                 self.send_json({'success': True, 'id': new_id})
 
             elif path == '/api/admin/employees/update':
                 cur.execute('''
-                    UPDATE night_employees SET emp_name=%s, emp_code=%s, email=%s, mobile=%s, department=%s
+                    UPDATE night_employees SET emp_name=%s, emp_code=%s, email=%s, mobile=%s, department=%s, pickup_address=%s
                     WHERE id=%s
                 ''', (body['emp_name'], body.get('emp_code',''), body['email'],
-                      body.get('mobile',''), body.get('department',''), body['id']))
+                      body.get('mobile',''), body.get('department',''), body.get('pickup_address',''), body['id']))
                 conn.commit()
                 self.send_json({'success': True})
 

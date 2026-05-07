@@ -401,7 +401,7 @@ async function renderAdminEmployees() {
       <button class="btn-sm btn-sm-gold" onclick="openEmpModal()">+ Add Employee</button>
     </div>
     <div class="card" style="padding:0;overflow:auto">
-    <table><thead><tr><th>Name</th><th>Code</th><th>Email</th><th>Mobile</th><th>Department</th><th></th></tr></thead><tbody>`;
+    <table><thead><tr><th>Name</th><th>Code</th><th>Email</th><th>Mobile</th><th>Department</th><th>Pickup Address</th><th></th></tr></thead><tbody>`;
   if (!employeesCache.length) {
     html += `<tr><td colspan="6" style="text-align:center;color:#555;padding:30px">No employees yet</td></tr>`;
   } else {
@@ -409,6 +409,7 @@ async function renderAdminEmployees() {
       html += `<tr>
         <td><b>${e.emp_name}</b></td><td style="color:#888">${e.emp_code || ''}</td>
         <td>${e.email}</td><td>${e.mobile || ''}</td><td>${e.department || ''}</td>
+        <td style="color:#888;font-size:12px">${e.pickup_address || '—'}</td>
         <td>
           <button class="action-btn" onclick='openEmpModal(${JSON.stringify(e)})'>Edit</button>
           <button class="action-btn danger" onclick="deleteEmp(${e.id})">Delete</button>
@@ -432,6 +433,7 @@ function openEmpModal(e) {
       <div class="form-row"><label>Mobile *</label><input id="e-mobile" value="${e.mobile || ''}"></div>
       <div class="form-row"><label>Department</label><input id="e-dept" value="${e.department || ''}"></div>
     </div>
+    <div class="form-row"><label>Pickup Address</label><input id="e-pickup" value="${e.pickup_address || ''}" placeholder="e.g. Sector 62, Noida"></div>
     <div id="modal-err" class="err-msg"></div>
     <div class="modal-actions">
       <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
@@ -440,7 +442,7 @@ function openEmpModal(e) {
 }
 
 async function submitEmp(id) {
-  const data = { emp_name: document.getElementById('e-name').value.trim(), emp_code: document.getElementById('e-code').value.trim(), email: document.getElementById('e-email').value.trim().toLowerCase(), mobile: document.getElementById('e-mobile').value.trim(), department: document.getElementById('e-dept').value.trim() };
+  const data = { emp_name: document.getElementById('e-name').value.trim(), emp_code: document.getElementById('e-code').value.trim(), email: document.getElementById('e-email').value.trim().toLowerCase(), mobile: document.getElementById('e-mobile').value.trim(), department: document.getElementById('e-dept').value.trim(), pickup_address: document.getElementById('e-pickup').value.trim() };
   if (!data.emp_name || !data.email) { document.getElementById('modal-err').textContent = 'Name and email required'; return; }
   if (id) data.id = id;
   const res = await apiPost(id ? '/api/admin/employees/update' : '/api/admin/employees', data);
