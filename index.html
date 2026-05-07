@@ -512,10 +512,15 @@ async function deleteVendor(id) {
   showToast('Vendor deleted'); await loadVendors(); renderAdminVendors();
 }
 
+let costViewAll = false;
+
 // ── COST REPORT ──
 async function renderAdminCost() {
   const dates = getWeekDates(rosterWeekOffset);
-  const roster = await fetch(`${API}/api/admin/roster?date_from=${dates[0]}&date_to=${dates[6]}`).then(r => r.json()).catch(() => []);
+  const url = costViewAll
+    ? `${API}/api/admin/roster`
+    : `${API}/api/admin/roster?date_from=${dates[0]}&date_to=${dates[6]}`;
+  const roster = await fetch(url).then(r => r.json()).catch(() => []);
   const totalCost = roster.reduce((s, r) => s + (parseFloat(r.cab_cost) || 0), 0);
 
   // Route summary
@@ -543,10 +548,16 @@ async function renderAdminCost() {
       <div class="kpi"><div class="kpi-label">Total Trips</div><div class="kpi-val">${roster.length}</div></div>
       <div class="kpi"><div class="kpi-label">Total Cost</div><div class="kpi-val">₹${totalCost.toLocaleString('en-IN')}</div></div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset--;renderAdminCost()">◀ Prev Week</button>
-      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset=0;renderAdminCost()">This Week</button>
-      <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset++;renderAdminCost()">Next Week ▶</button>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+      ${costViewAll ? '' : `
+        <button class="btn-sm btn-sm-outline" onclick="costViewAll=false;rosterWeekOffset--;renderAdminCost()">◀ Prev Week</button>
+        <button class="btn-sm btn-sm-outline" onclick="costViewAll=false;rosterWeekOffset=0;renderAdminCost()">This Week</button>
+        <button class="btn-sm btn-sm-outline" onclick="costViewAll=false;rosterWeekOffset++;renderAdminCost()">Next Week ▶</button>
+      `}
+      <button class="btn-sm ${costViewAll ? 'btn-sm-gold' : 'btn-sm-outline'}" onclick="costViewAll=!costViewAll;renderAdminCost()">
+        ${costViewAll ? '✓ All Dates' : 'All Dates'}
+      </button>
+      ${costViewAll ? '' : `<span style="color:#666;font-size:12px">${dates[0]} – ${dates[6]}</span>`}
     </div>`;
 
   // ── Date-wise table ──
