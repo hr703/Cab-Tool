@@ -298,40 +298,73 @@ def build_excel(rows):
     ws.freeze_panes = 'A2'
     ws.auto_filter.ref = ws.dimensions
 
-    # ── Sheet 2: Cost Summary ─────────────────────────────────────────
-    ws2 = wb.create_sheet('Cost Summary')
-    cost_map = {}
-    for r in rows:
-        route = r.get('route_name', 'Unknown')
-        date  = str(r.get('shift_date', ''))
-        key   = (date, route)
-        if key not in cost_map:
-            cost_map[key] = {'date': date, 'route': route, 'employees': 0, 'cab_cost': float(r.get('cab_cost', 0) or 0)}
-        cost_map[key]['employees'] += 1
+    # ── Sheet 2: Date-wise Cost Summary ──────────────────────────────
+    ws2 = wb.create_sheet('Date-wise Cost')
+    gold_fill   = PatternFill('solid', fgColor='FFF2CC')
+    bold_font   = Font(bold=True, size=10)
 
-    ws2.append(['Date', 'Route', 'Employees', 'Cab Cost (₹)'])
+    # Collect all unique routes (sorted)
+    all_routes = sorted(set(r.get('route_name', '') for r in rows))
+
+    # date → { route → {employees, cab_cost} }
+    date_map = {}
+    for r in rows:
+        date  = str(r.get('shift_date', ''))
+        route = r.get('route_name', 'Unknown')
+        cost  = float(r.get('cab_cost', 0) or 0)
+        if date not in date_map:
+            date_map[date] = {}
+        if route not in date_map[date]:
+            date_map[date][route] = {'employees': 0, 'cost': cost}
+        date_map[date][route]['employees'] += 1
+
+    # Header row: Date | Route1 Emp | Route1 Cost | Route2 Emp | ... | Total Emp | Total Cost
+    hdr = ['Date']
+    for rt in all_routes:
+        hdr += [f'{rt}\nEmployees', f'{rt}\nCost (₹)']
+    hdr += ['Total Employees', 'Total Cost (₹)']
+    ws2.append(hdr)
+
     for cell in ws2[1]:
         cell.font = header_font
         cell.fill = header_fill
-        cell.alignment = Alignment(horizontal='center')
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
         cell.border = border
-    for w, col in zip([12, 22, 12, 14], ['A', 'B', 'C', 'D']):
-        ws2.column_dimensions[col].width = w
+    ws2.row_dimensions[1].height = 35
+    ws2.column_dimensions['A'].width = 13
+    for ci in range(2, len(hdr) + 1):
+        ws2.column_dimensions[get_column_letter(ci)].width = 14
 
-    total_cost = 0
-    for idx, v in enumerate(sorted(cost_map.values(), key=lambda x: (x['date'], x['route'])), 2):
-        ws2.append([v['date'], v['route'], v['employees'], v['cab_cost']])
-        total_cost += v['cab_cost']
+    grand_emp = 0
+    grand_cost = 0
+    for idx, date in enumerate(sorted(date_map.keys()), 2):
+        row = [date]
+        day_emp = 0
+        day_cost = 0
+        for rt in all_routes:
+            d = date_map[date].get(rt, {'employees': 0, 'cost': 0})
+            row += [d['employees'] or '', d['cost'] if d['employees'] else '']
+            day_emp  += d['employees']
+            day_cost += d['cost']
+        row += [day_emp, day_cost]
+        grand_emp  += day_emp
+        grand_cost += day_cost
+        ws2.append(row)
         fill = alt_fill if idx % 2 == 0 else None
         for cell in ws2[idx]:
             if fill: cell.fill = fill
             cell.border = border
+            cell.alignment = Alignment(horizontal='center', vertical='center')
 
-    # Total row
+    # Grand Total row
     tr = ws2.max_row + 1
-    ws2.cell(tr, 1, 'TOTAL').font = Font(bold=True)
-    ws2.cell(tr, 4, total_cost).font = Font(bold=True)
-    ws2.cell(tr, 4).fill = PatternFill('solid', fgColor='FFF2CC')
+    ws2.cell(tr, 1, 'GRAND TOTAL').font = bold_font
+    ws2.cell(tr, 1).fill = gold_fill
+    ws2.cell(tr, len(hdr) - 1, grand_emp).font = bold_font
+    ws2.cell(tr, len(hdr) - 1).fill = gold_fill
+    ws2.cell(tr, len(hdr), grand_cost).font = bold_font
+    ws2.cell(tr, len(hdr)).fill = gold_fill
+    ws2.freeze_panes = 'B2'
 
     buf = io.BytesIO()
     wb.save(buf)
