@@ -246,7 +246,7 @@ def get_roster_full(cur, where_clause='', params=()):
     return result
 
 
-def build_excel(rows):
+def build_excel(rows, employees=None):
     wb = openpyxl.Workbook()
 
     # ── Sheet 1: Roster ──────────────────────────────────────────────
@@ -366,6 +366,32 @@ def build_excel(rows):
     ws2.cell(tr, len(hdr)).fill = gold_fill
     ws2.freeze_panes = 'B2'
 
+    # ── Sheet 3: Employee Master ──────────────────────────────────────
+    if employees:
+        ws3 = wb.create_sheet('Employee Master')
+        emp_headers = ['Emp Code', 'Name', 'Department', 'Mobile', 'Email']
+        emp_widths  = [12, 24, 18, 15, 30]
+        ws3.append(emp_headers)
+        for i, cell in enumerate(ws3[1], 1):
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = border
+            ws3.column_dimensions[get_column_letter(i)].width = emp_widths[i-1]
+        ws3.row_dimensions[1].height = 25
+        for idx, e in enumerate(sorted(employees, key=lambda x: x.get('emp_name', '')), 2):
+            ws3.append([
+                e.get('emp_code', ''), e.get('emp_name', ''),
+                e.get('department', ''), e.get('mobile', ''), e.get('email', '')
+            ])
+            fill = alt_fill if idx % 2 == 0 else None
+            for cell in ws3[idx]:
+                if fill: cell.fill = fill
+                cell.border = border
+                cell.alignment = Alignment(vertical='center')
+        ws3.freeze_panes = 'A2'
+        ws3.auto_filter.ref = ws3.dimensions
+
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
@@ -469,7 +495,9 @@ class Handler(BaseHTTPRequestHandler):
                     rows = get_roster_full(cur, 'WHERE r.shift_date BETWEEN %s AND %s', (date_from, date_to))
                 else:
                     rows = get_roster_full(cur)
-                xlsx = build_excel(rows)
+                cur.execute('SELECT * FROM night_employees ORDER BY emp_name')
+                employees = [dict(r) for r in cur.fetchall()]
+                xlsx = build_excel(rows, employees)
                 fname = f'cab_roster_{date_from or "all"}_to_{date_to or "all"}.xlsx'
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
