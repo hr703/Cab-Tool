@@ -98,37 +98,36 @@ def init_db():
     conn.close()
 
 
-def verify_google_token(token):
+def verify_google_token_debug(token):
     import base64, time
     try:
         parts = token.split('.')
         if len(parts) != 3:
-            print('Invalid JWT structure')
-            return None
+            return None, 'Invalid JWT structure'
         padding = 4 - len(parts[1]) % 4
         payload_bytes = base64.urlsafe_b64decode(parts[1] + '=' * padding)
         data = json.loads(payload_bytes.decode('utf-8'))
-        print('JWT payload:', json.dumps({k: data.get(k) for k in ('email','iss','aud','exp')}))
         iss = data.get('iss', '')
         if iss not in ('accounts.google.com', 'https://accounts.google.com'):
-            print('Invalid issuer:', iss)
-            return None
-        if data.get('aud', '') != GOOGLE_CLIENT_ID:
-            print('Audience mismatch:', data.get('aud'), 'vs', GOOGLE_CLIENT_ID)
-            return None
+            return None, 'Bad issuer: ' + iss
+        aud = data.get('aud', '')
+        if aud != GOOGLE_CLIENT_ID:
+            return None, 'Aud mismatch: got=' + str(aud) + ' want=' + GOOGLE_CLIENT_ID
         if data.get('exp', 0) < time.time():
-            print('Token expired')
-            return None
+            return None, 'Token expired'
         email = data.get('email', '').lower()
         domain = email.split('@')[-1] if '@' in email else ''
         name = data.get('name', email)
         if domain == ALLOWED_DOMAIN:
             role = 'admin' if email in ADMIN_EMAILS else 'employee'
-            return {'email': email, 'name': name, 'role': role}
-        print('Domain mismatch:', domain, '!=', ALLOWED_DOMAIN)
+            return {'email': email, 'name': name, 'role': role}, None
+        return None, 'Domain rejected: ' + domain
     except Exception as ex:
-        print('Google token error:', type(ex).__name__, ex)
-    return None
+        return None, str(ex)
+
+def verify_google_token(token):
+    user, _ = verify_google_token_debug(token)
+    return user
 
 
 def send_email(to_email, to_name, subject, html):
@@ -351,11 +350,11 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/auth/google':
                 token = body.get('token', '')
                 print('Auth attempt, token len:', len(token))
-                user = verify_google_token(token)
+                user, dbg = verify_google_token_debug(token)
                 if user:
                     self.send_json({'success': True, 'user': user})
                 else:
-                    self.send_json({'success': False, 'error': 'Unauthorized'}, 401)
+                    self.send_json({'success': False, 'error': 'Unauthorized', 'debug': dbg}, 401)
 
             elif path == '/api/auth/vendor':
                 name = body.get('name', '').strip()

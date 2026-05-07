@@ -141,7 +141,7 @@ async function initGoogle() {
 async function handleGoogleLogin(response) {
   const res = await apiPost('/api/auth/google', { token: response.credential });
   if (res.success) { currentUser = res.user; enterApp(); }
-  else document.getElementById('google-err').textContent = 'Access denied. Use your @cuemath.com account.';
+  else document.getElementById('google-err').textContent = 'Access denied: ' + (res.debug || 'Use your @cuemath.com account.');
 }
 
 async function vendorLogin() {
