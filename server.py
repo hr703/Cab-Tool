@@ -39,6 +39,7 @@ def init_db():
             drop_time TEXT DEFAULT '',
             report_time TEXT DEFAULT '',
             cab_cost NUMERIC DEFAULT 0,
+            guard_cost NUMERIC DEFAULT 0,
             created_at TIMESTAMP DEFAULT NOW()
         )
     ''')
@@ -97,7 +98,8 @@ def init_db():
             assigned_at TIMESTAMP DEFAULT NOW()
         )
     ''')
-    # Migration: add pickup_address if not exists
+    # Migrations
+    cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS guard_cost NUMERIC DEFAULT 0")
     cur.execute("""
         ALTER TABLE night_employees ADD COLUMN IF NOT EXISTS pickup_address TEXT DEFAULT ''
     """)
