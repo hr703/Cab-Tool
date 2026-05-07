@@ -99,11 +99,26 @@ def init_db():
 
 
 def verify_google_token(token):
+    import base64, time
     try:
-        url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' + token
-        with urllib.request.urlopen(url, timeout=10) as r:
-            data = json.loads(r.read())
-        print('tokeninfo response:', json.dumps({k: data.get(k) for k in ('email','email_verified','hd','aud')}))
+        parts = token.split('.')
+        if len(parts) != 3:
+            print('Invalid JWT structure')
+            return None
+        padding = 4 - len(parts[1]) % 4
+        payload_bytes = base64.urlsafe_b64decode(parts[1] + '=' * padding)
+        data = json.loads(payload_bytes.decode('utf-8'))
+        print('JWT payload:', json.dumps({k: data.get(k) for k in ('email','iss','aud','exp')}))
+        iss = data.get('iss', '')
+        if iss not in ('accounts.google.com', 'https://accounts.google.com'):
+            print('Invalid issuer:', iss)
+            return None
+        if data.get('aud', '') != GOOGLE_CLIENT_ID:
+            print('Audience mismatch:', data.get('aud'), 'vs', GOOGLE_CLIENT_ID)
+            return None
+        if data.get('exp', 0) < time.time():
+            print('Token expired')
+            return None
         email = data.get('email', '').lower()
         domain = email.split('@')[-1] if '@' in email else ''
         name = data.get('name', email)
