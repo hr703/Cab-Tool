@@ -216,7 +216,7 @@ function adminTab(name, btn) {
   else if (name === 'routes') renderAdminRoutes();
   else if (name === 'employees') renderAdminEmployees();
   else if (name === 'vendors') renderAdminVendors();
-  else if (name === 'cost') renderAdminCost();
+  else if (name === 'cost') { costViewAll = true; renderAdminCost(); }
 }
 
 async function loadRoutes() { routesCache = await fetch(API + '/api/admin/routes').then(r => r.json()).catch(() => []); }
