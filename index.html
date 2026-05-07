@@ -261,7 +261,10 @@ async function renderAdminRoster() {
         <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset=0;renderAdminRoster()">This Week</button>
         <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset++;renderAdminRoster()">Next ▶</button>
       </div>
-      <button class="btn-sm btn-sm-gold" onclick="openAddRosterModal()">+ Add to Roster</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm btn-sm-gold" onclick="openAddRosterModal()">+ Add to Roster</button>
+        <button class="btn-sm btn-sm-outline" onclick="downloadExcel('${dates[0]}','${dates[6]}')" style="color:#4CAF50;border-color:#4CAF50">⬇ Download Excel</button>
+      </div>
     </div>
     <div class="card" style="padding:0;overflow:auto">
     <table><thead><tr>
@@ -800,6 +803,16 @@ async function renderEmployeeView() {
 }
 
 // ── UTILS ─────────────────────────────────────────────────
+function downloadExcel(dateFrom, dateTo) {
+  const url = `${API}/api/admin/export?date_from=${dateFrom}&date_to=${dateTo}`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cab_roster_${dateFrom}_to_${dateTo}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
 async function apiPost(endpoint, data) {
   try {
     return await fetch(API + endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json());

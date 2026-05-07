@@ -1,6 +1,9 @@
-import os, json, urllib.parse, urllib.request, hashlib
+import os, json, urllib.parse, urllib.request, hashlib, io
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import psycopg2, psycopg2.extras
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 PORT = int(os.environ.get('PORT', 8082))
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
@@ -243,6 +246,99 @@ def get_roster_full(cur, where_clause='', params=()):
     return result
 
 
+def build_excel(rows):
+    wb = openpyxl.Workbook()
+
+    # ── Sheet 1: Roster ──────────────────────────────────────────────
+    ws = wb.active
+    ws.title = 'Roster'
+
+    header_fill = PatternFill('solid', fgColor='1F4E79')
+    header_font = Font(bold=True, color='FFFFFF', size=10)
+    alt_fill    = PatternFill('solid', fgColor='D6E4F0')
+    thin = Side(style='thin', color='AAAAAA')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    headers = [
+        'Date', 'Employee', 'Emp Code', 'Department', 'Mobile',
+        'Route', 'Pick Up', 'Drop', 'Pick Time', 'Drop Time',
+        'Driver', 'Driver Mobile', 'Vehicle Type', 'Vehicle No',
+        'Guard', 'Guard Mobile', 'Cab Cost (₹)'
+    ]
+    col_widths = [12, 22, 10, 16, 14, 18, 22, 22, 10, 10, 18, 14, 14, 14, 18, 14, 12]
+
+    ws.append(headers)
+    for i, cell in enumerate(ws[1], 1):
+        cell.font = header_fill and header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        cell.border = border
+        ws.column_dimensions[get_column_letter(i)].width = col_widths[i-1]
+    ws.row_dimensions[1].height = 30
+
+    for idx, r in enumerate(rows, 2):
+        row = [
+            str(r.get('shift_date', '')),
+            r.get('emp_name', ''), r.get('emp_code', ''), r.get('department', ''), r.get('mobile', ''),
+            r.get('route_name', ''), r.get('pick_location', ''), r.get('drop_location', ''),
+            r.get('pick_time', ''), r.get('drop_time', ''),
+            r.get('driver_name', ''), r.get('driver_mobile', ''),
+            r.get('vehicle_type', ''), r.get('vehicle_number', ''),
+            r.get('guard_name', ''), r.get('guard_mobile', ''),
+            r.get('cab_cost', 0)
+        ]
+        ws.append(row)
+        fill = alt_fill if idx % 2 == 0 else None
+        for cell in ws[idx]:
+            if fill:
+                cell.fill = fill
+            cell.border = border
+            cell.alignment = Alignment(vertical='center')
+
+    ws.freeze_panes = 'A2'
+    ws.auto_filter.ref = ws.dimensions
+
+    # ── Sheet 2: Cost Summary ─────────────────────────────────────────
+    ws2 = wb.create_sheet('Cost Summary')
+    cost_map = {}
+    for r in rows:
+        route = r.get('route_name', 'Unknown')
+        date  = str(r.get('shift_date', ''))
+        key   = (date, route)
+        if key not in cost_map:
+            cost_map[key] = {'date': date, 'route': route, 'employees': 0, 'cab_cost': float(r.get('cab_cost', 0) or 0)}
+        cost_map[key]['employees'] += 1
+
+    ws2.append(['Date', 'Route', 'Employees', 'Cab Cost (₹)'])
+    for cell in ws2[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center')
+        cell.border = border
+    for w, col in zip([12, 22, 12, 14], ['A', 'B', 'C', 'D']):
+        ws2.column_dimensions[col].width = w
+
+    total_cost = 0
+    for idx, v in enumerate(sorted(cost_map.values(), key=lambda x: (x['date'], x['route'])), 2):
+        ws2.append([v['date'], v['route'], v['employees'], v['cab_cost']])
+        total_cost += v['cab_cost']
+        fill = alt_fill if idx % 2 == 0 else None
+        for cell in ws2[idx]:
+            if fill: cell.fill = fill
+            cell.border = border
+
+    # Total row
+    tr = ws2.max_row + 1
+    ws2.cell(tr, 1, 'TOTAL').font = Font(bold=True)
+    ws2.cell(tr, 4, total_cost).font = Font(bold=True)
+    ws2.cell(tr, 4).fill = PatternFill('solid', fgColor='FFF2CC')
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.read()
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
@@ -332,6 +428,23 @@ class Handler(BaseHTTPRequestHandler):
                     self.send_json(rows)
                 else:
                     self.send_json([])
+
+            elif path == '/api/admin/export':
+                date_from = params.get('date_from', [None])[0]
+                date_to   = params.get('date_to',   [None])[0]
+                if date_from and date_to:
+                    rows = get_roster_full(cur, 'WHERE r.shift_date BETWEEN %s AND %s', (date_from, date_to))
+                else:
+                    rows = get_roster_full(cur)
+                xlsx = build_excel(rows)
+                fname = f'cab_roster_{date_from or "all"}_to_{date_to or "all"}.xlsx'
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                self.send_header('Content-Disposition', f'attachment; filename="{fname}"')
+                self.send_header('Content-Length', len(xlsx))
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(xlsx)
 
             else:
                 self.send_json({'error': 'Not found'}, 404)
