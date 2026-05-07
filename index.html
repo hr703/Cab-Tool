@@ -516,11 +516,13 @@ let costViewAll = false;
 
 // ── COST REPORT ──
 async function renderAdminCost() {
+  document.getElementById('tab-cost').innerHTML = '<div style="padding:20px;color:#888">Loading...</div>';
+  try {
   const dates = getWeekDates(rosterWeekOffset);
   const url = costViewAll
     ? `${API}/api/admin/roster`
     : `${API}/api/admin/roster?date_from=${dates[0]}&date_to=${dates[6]}`;
-  const roster = await fetch(url).then(r => r.json()).catch(() => []);
+  const roster = await fetch(url).then(r => r.json()).catch(e => { throw e; });
   const totalCost = roster.reduce((s, r) => s + (parseFloat(r.cab_cost) || 0), 0);
 
   // Route summary
@@ -614,6 +616,9 @@ async function renderAdminCost() {
   }
   html += `</tbody></table></div>`;
   document.getElementById('tab-cost').innerHTML = html;
+  } catch(err) {
+    document.getElementById('tab-cost').innerHTML = `<div style="padding:20px;color:red">Error: ${err.message || err}</div>`;
+  }
 }
 
 // ── CAB COMPANY VIEW ──────────────────────────────────────
