@@ -18,7 +18,7 @@ ALLOWED_DOMAIN = 'cuemath.com'
 def get_db():
     if not DATABASE_URL:
         raise Exception('DATABASE_URL not set')
-    return psycopg2.connect(DATABASE_URL, connect_timeout=10)
+    return psycopg2.connect(DATABASE_URL, connect_timeout=30)
 
 
 def hash_pw(pw):
@@ -444,7 +444,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({'google_client_id': GOOGLE_CLIENT_ID})
             return
 
-        conn = get_db()
+        try:
+            conn = get_db()
+        except Exception as dbe:
+            print('DB connect error (GET):', dbe)
+            self.send_json({'error': 'DB unavailable: ' + str(dbe)}, 503)
+            return
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         try:
@@ -529,7 +534,12 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({'success': False, 'error': 'Unauthorized', 'debug': dbg}, 401)
             return
 
-        conn = get_db()
+        try:
+            conn = get_db()
+        except Exception as dbe:
+            print('DB connect error (POST):', dbe)
+            self.send_json({'success': False, 'error': 'DB unavailable: ' + str(dbe)}, 503)
+            return
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         try:
