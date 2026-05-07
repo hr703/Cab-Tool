@@ -553,26 +553,31 @@ async function renderAdminCost() {
   html += `<h3 style="color:var(--gold);margin:0 0 10px">Date-wise Cost</h3>
     <div class="card" style="padding:0;overflow:auto;margin-bottom:24px">
     <table><thead><tr><th>Date</th>`;
-  allRoutes.forEach(rt => html += `<th>${rt}<br><small style="color:#888;font-weight:400">Trips | Cost</small></th>`);
-  html += `<th>Day Total</th></tr></thead><tbody>`;
+  allRoutes.forEach(rt => html += `<th>${rt}<br><small style="color:#888;font-weight:400">Emp | Cost</small></th>`);
+  html += `<th>Total Emp</th><th>Day Cost</th></tr></thead><tbody>`;
 
   if (!Object.keys(byDate).length) {
-    html += `<tr><td colspan="${allRoutes.length + 2}" style="text-align:center;color:#555;padding:24px">No data for this week</td></tr>`;
+    html += `<tr><td colspan="${allRoutes.length + 3}" style="text-align:center;color:#555;padding:24px">No data for this week</td></tr>`;
   } else {
-    let grandTotal = 0;
+    let grandTotal = 0; let grandEmp = 0;
     Object.keys(byDate).sort().forEach(date => {
       const day = byDate[date];
+      let dayEmp = 0;
+      allRoutes.forEach(rt => { if (day[rt]) dayEmp += day[rt].count; });
       html += `<tr><td><b>${fmtDate(date)}</b></td>`;
       allRoutes.forEach(rt => {
         const d = day[rt];
         html += d
-          ? `<td style="text-align:center">${d.count} &nbsp;<span style="color:var(--gold)">₹${d.cost.toLocaleString('en-IN')}</span></td>`
+          ? `<td style="text-align:center"><span style="color:#4fc3f7;font-weight:600">${d.count} emp</span><br><span style="color:var(--gold)">₹${d.cost.toLocaleString('en-IN')}</span></td>`
           : `<td style="text-align:center;color:#444">—</td>`;
       });
+      html += `<td style="text-align:center;color:#4fc3f7;font-weight:700">${dayEmp}</td>`;
       html += `<td style="color:var(--gold);font-weight:700">₹${day.total.toLocaleString('en-IN')}</td></tr>`;
-      grandTotal += day.total;
+      grandTotal += day.total; grandEmp += dayEmp;
     });
-    html += `<tr style="background:#111"><td colspan="${allRoutes.length + 1}" style="text-align:right;font-weight:700;color:#fff;padding:10px">Week Total:</td>
+    html += `<tr style="background:#111">
+      <td colspan="${allRoutes.length + 1}" style="text-align:right;font-weight:700;color:#fff;padding:10px">Week Total:</td>
+      <td style="color:#4fc3f7;font-weight:700;font-size:15px;text-align:center">${grandEmp}</td>
       <td style="color:var(--gold);font-weight:700;font-size:15px">₹${grandTotal.toLocaleString('en-IN')}</td></tr>`;
   }
   html += `</tbody></table></div>`;
