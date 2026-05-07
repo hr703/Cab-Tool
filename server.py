@@ -101,16 +101,18 @@ def init_db():
 def verify_google_token(token):
     try:
         url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' + token
-        with urllib.request.urlopen(url) as r:
+        with urllib.request.urlopen(url, timeout=10) as r:
             data = json.loads(r.read())
+        print('tokeninfo response:', json.dumps({k: data.get(k) for k in ('email','email_verified','hd','aud')}))
         email = data.get('email', '').lower()
         domain = email.split('@')[-1] if '@' in email else ''
         name = data.get('name', email)
         if domain == ALLOWED_DOMAIN:
             role = 'admin' if email in ADMIN_EMAILS else 'employee'
             return {'email': email, 'name': name, 'role': role}
+        print('Domain mismatch:', domain, '!=', ALLOWED_DOMAIN)
     except Exception as ex:
-        print('Google token error:', ex)
+        print('Google token error:', type(ex).__name__, ex)
     return None
 
 
@@ -332,7 +334,9 @@ class Handler(BaseHTTPRequestHandler):
 
         try:
             if path == '/api/auth/google':
-                user = verify_google_token(body.get('token', ''))
+                token = body.get('token', '')
+                print('Auth attempt, token len:', len(token))
+                user = verify_google_token(token)
                 if user:
                     self.send_json({'success': True, 'user': user})
                 else:
