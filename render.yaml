@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: cab-tool
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: GOOGLE_CLIENT_ID
+        value: 18449661121-3t9n93kptngup4tq3bj7rn2ouf58rtob.apps.googleusercontent.com
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_wKWxS7GZHY4g@ep-young-sun-anhfn91q.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require
+      - key: ADMIN_EMAILS
+        value: hr@cuemath.com,ajay.yadav@cuemath.com,ravindra.rajput@cuemath.com,deepak.tyagi@cuemath.com
