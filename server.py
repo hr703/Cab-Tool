@@ -635,7 +635,8 @@ class Handler(BaseHTTPRequestHandler):
                 qty = float(body['quantity'])
                 log_type = body.get('log_type', 'use')
                 if log_type == 'add':
-                    cur.execute('UPDATE inventory_items SET current_stock=current_stock+%s WHERE id=%s', (qty, item_id))
+                    cur.execute('UPDATE inventory_items SET current_stock=current_stock+%s, purchase_date=%s WHERE id=%s',
+                        (qty, body.get('log_date', ''), item_id))
                 else:
                     cur.execute('UPDATE inventory_items SET current_stock=GREATEST(0,current_stock-%s) WHERE id=%s', (qty, item_id))
                 cost = float(body.get('cost_per_unit', 0))
