@@ -197,7 +197,7 @@ async function renderAdminView() {
     <div class="tabs">
       <button class="tab-btn active" onclick="adminTab('costsummary',this)">Cost Summary</button>
       <button class="tab-btn" onclick="adminTab('employees',this)">Employees</button>
-      <button class="tab-btn" onclick="adminTab('inventory',this)">🍜 Inventory</button>
+      <button class="tab-btn" onclick="adminTab('inventory',this)">🍽️ Employee Meal Details</button>
     </div>
     <div id="tab-costsummary" class="tab-content active"></div>
     <div id="tab-employees" class="tab-content"></div>
@@ -648,7 +648,7 @@ async function renderAdminEmployees() {
       <button class="tab-btn ${empSubTab==='routes'?'active':''}" onclick="empSubTab='routes';renderAdminEmployees()">Routes</button>
       <button class="tab-btn ${empSubTab==='daily'?'active':''}" onclick="empSubTab='daily';renderAdminEmployees()">Daily Plan</button>
       <button class="tab-btn ${empSubTab==='vendors'?'active':''}" onclick="empSubTab='vendors';renderAdminEmployees()">Vendors</button>
-      <button class="tab-btn ${empSubTab==='snack'?'active':''}" onclick="empSubTab='snack';renderAdminEmployees()">🍜 Snack Register</button>
+      <button class="tab-btn ${empSubTab==='snack'?'active':''}" onclick="empSubTab='snack';renderAdminEmployees()">🍽️ Meal Register</button>
       <button class="tab-btn ${empSubTab==='attendance'?'active':''}" onclick="empSubTab='attendance';renderAdminEmployees()">✅ Attendance</button>
     </div>
     <div id="emp-sub-content"></div>`;
