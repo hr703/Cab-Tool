@@ -1249,15 +1249,26 @@ async function deleteInvItem(id) {
   showToast('Item deleted'); loadInvItems();
 }
 
+let invUseDate = new Date().toISOString().split('T')[0];
+
 async function loadInvUse() {
-  const items = await fetch(`${API}/api/admin/inventory`).then(r => r.json()).catch(() => []);
+  const [items, rosterRes] = await Promise.all([
+    fetch(`${API}/api/admin/inventory`).then(r => r.json()).catch(() => []),
+    fetch(`${API}/api/roster?date=${invUseDate}`).then(r => r.json()).catch(() => [])
+  ]);
   const el = document.getElementById('inv-content');
-  const today = new Date().toISOString().split('T')[0];
+  const empCount = Array.isArray(rosterRes) ? rosterRes.length : (rosterRes.roster ? rosterRes.roster.length : 0);
 
   let html = `
-    <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px">Aaj ka Use Record Karo (${fmtDate(today)})</div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="font-size:14px;font-weight:600">Use Record Karo</div>
+      <input type="date" value="${invUseDate}" onchange="invUseDate=this.value;loadInvUse()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:13px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:13px">
+        👥 Employees on ${fmtDate(invUseDate)}: <b style="color:var(--primary)">${empCount}</b>
+      </div>
+    </div>
     <div class="card" style="padding:0;overflow:auto;margin-bottom:16px">
-    <table><thead><tr><th>Item</th><th>Stock Available</th><th>Used Today</th><th>Note</th></tr></thead><tbody>`;
+    <table><thead><tr><th>Item</th><th>Stock Available</th><th>Used</th><th>Note</th></tr></thead><tbody>`;
 
   if (!items.length) {
     html += `<tr><td colspan="4" style="text-align:center;color:#888;padding:24px">Pehle items add karo</td></tr>`;
@@ -1273,14 +1284,14 @@ async function loadInvUse() {
   }
   html += `</tbody></table></div>`;
   if (items.length) {
-    html += `<button class="btn-sm btn-sm-gold" onclick="submitDailyUse()">💾 Save Today's Use</button>`;
+    html += `<button class="btn-sm btn-sm-gold" onclick="submitDailyUse()">💾 Save Use</button>`;
   }
   el.innerHTML = html;
 }
 
 async function submitDailyUse() {
   const items = await fetch(`${API}/api/admin/inventory`).then(r => r.json()).catch(() => []);
-  const today = new Date().toISOString().split('T')[0];
+  const today = invUseDate;
   let saved = 0;
   for (const i of items) {
     const qty = parseFloat(document.getElementById(`use_${i.id}`)?.value || 0);
