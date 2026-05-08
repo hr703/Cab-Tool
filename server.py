@@ -130,6 +130,7 @@ def init_db():
         )
     ''')
     cur.execute("ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS purchase_date TEXT DEFAULT ''")
+    cur.execute("ALTER TABLE inventory_log ADD COLUMN IF NOT EXISTS cost_per_unit NUMERIC DEFAULT 0")
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_driver_name TEXT DEFAULT ''")
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_driver_mobile TEXT DEFAULT ''")
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_vehicle_type TEXT DEFAULT ''")
@@ -637,9 +638,10 @@ class Handler(BaseHTTPRequestHandler):
                     cur.execute('UPDATE inventory_items SET current_stock=current_stock+%s WHERE id=%s', (qty, item_id))
                 else:
                     cur.execute('UPDATE inventory_items SET current_stock=GREATEST(0,current_stock-%s) WHERE id=%s', (qty, item_id))
-                cur.execute('''INSERT INTO inventory_log (item_id, log_date, quantity, log_type, note)
-                    VALUES (%s,%s,%s,%s,%s)''',
-                    (item_id, body.get('log_date', ''), qty, log_type, body.get('note','')))
+                cost = float(body.get('cost_per_unit', 0))
+                cur.execute('''INSERT INTO inventory_log (item_id, log_date, quantity, log_type, note, cost_per_unit)
+                    VALUES (%s,%s,%s,%s,%s,%s)''',
+                    (item_id, body.get('log_date', ''), qty, log_type, body.get('note',''), cost))
                 conn.commit()
                 self.send_json({'success': True})
 

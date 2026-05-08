@@ -1180,7 +1180,7 @@ async function loadInvItems() {
         <td>${status}</td>
         <td>
           <button class="action-btn" onclick='openInvModal(${JSON.stringify(i)})'>Edit</button>
-          <button class="action-btn" style="color:#4fc3f7;border-color:#4fc3f7" onclick="openAddStockModal(${i.id},'${i.item_name}','${i.unit}')">+ Add Stock</button>
+          <button class="action-btn" style="color:#4fc3f7;border-color:#4fc3f7" onclick="openAddStockModal(${i.id},'${i.item_name}','${i.unit}',${i.cost_per_unit||0})">+ Add Stock</button>
           <button class="action-btn danger" onclick="deleteInvItem(${i.id})">Delete</button>
         </td>
       </tr>`;
@@ -1222,11 +1222,14 @@ async function submitInvItem(id) {
   else document.getElementById('modal-err').textContent = res.error || 'Error';
 }
 
-function openAddStockModal(itemId, itemName, unit) {
+function openAddStockModal(itemId, itemName, unit, costPerUnit) {
   showModal(`
     <h3>+ Stock Add Karo</h3>
     <div style="color:#888;margin-bottom:16px;font-size:13px">Item: <b style="color:var(--text)">${itemName}</b></div>
-    <div class="form-row"><label>Quantity (${unit})</label><input id="inv-addqty" type="number" placeholder="Kitna stock aaya"></div>
+    <div class="two-col">
+      <div class="form-row"><label>Quantity (${unit})</label><input id="inv-addqty" type="number" placeholder="Kitna stock aaya"></div>
+      <div class="form-row"><label>Cost/Unit (₹)</label><input id="inv-addcost" type="number" value="${costPerUnit||0}" placeholder="Per unit cost"></div>
+    </div>
     <div class="form-row"><label>Purchase Date</label><input id="inv-purchase-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
     <div class="form-row"><label>Note (optional)</label><input id="inv-addnote" placeholder="e.g. Vendor name, invoice no."></div>
     <div id="modal-err" class="err-msg"></div>
@@ -1240,7 +1243,8 @@ async function submitAddStock(itemId) {
   const qty = parseFloat(document.getElementById('inv-addqty').value)||0;
   if (!qty) { document.getElementById('modal-err').textContent = 'Quantity bharo'; return; }
   const purchaseDate = document.getElementById('inv-purchase-date').value || new Date().toISOString().split('T')[0];
-  const res = await apiPost('/api/admin/inventory/log', { item_id: itemId, quantity: qty, log_type: 'add', log_date: purchaseDate, note: document.getElementById('inv-addnote').value.trim() });
+  const cost = parseFloat(document.getElementById('inv-addcost').value)||0;
+  const res = await apiPost('/api/admin/inventory/log', { item_id: itemId, quantity: qty, log_type: 'add', log_date: purchaseDate, cost_per_unit: cost, note: document.getElementById('inv-addnote').value.trim() });
   if (res.success) { closeModal(); showToast(`✓ Stock added!`); loadInvItems(); }
 }
 
@@ -1336,16 +1340,21 @@ async function loadInvPurchases() {
     </div>
   </div>
   <div class="card" style="padding:0;overflow:auto">
-  <table><thead><tr><th>Purchase Date</th><th>Item</th><th>Qty</th><th>Note</th></tr></thead><tbody>`;
+  <table><thead><tr><th>Purchase Date</th><th>Item</th><th>Qty</th><th>Cost/Unit</th><th>Total</th><th>Note</th></tr></thead><tbody>`;
 
   if (!purchases.length) {
-    html += `<tr><td colspan="4" style="text-align:center;color:#888;padding:24px">Koi purchase nahi</td></tr>`;
+    html += `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">Koi purchase nahi. Stock Items mein "+ Add Stock" se add karo.</td></tr>`;
   } else {
     purchases.forEach(p => {
+      const qty = parseFloat(p.quantity);
+      const cpu = parseFloat(p.cost_per_unit)||0;
+      const total = qty * cpu;
       html += `<tr>
         <td style="font-weight:600">${fmtDate(String(p.log_date).substring(0,10))}</td>
         <td><b>${p.item_name}</b> <span style="color:#888;font-size:12px">(${p.unit})</span></td>
-        <td style="color:var(--green);font-weight:700">+${p.quantity}</td>
+        <td style="color:var(--green);font-weight:700">+${qty}</td>
+        <td style="color:#888">₹${cpu}</td>
+        <td style="font-weight:700;color:var(--primary)">${total>0?'₹'+total.toLocaleString('en-IN'):'—'}</td>
         <td style="color:#888;font-size:12px">${p.note||'—'}</td>
       </tr>`;
     });
