@@ -407,7 +407,7 @@ function toggleAllEmps() {
 
 async function submitAddRoster() {
   const selectedEmps = [...document.querySelectorAll('#emp-list input[type=checkbox]:checked')].map(b => b.value);
-  if (!selectedEmps.length) { document.getElementById('modal-err').textContent = 'Kam se kam ek employee select karo'; return; }
+  if (!selectedEmps.length) { document.getElementById('modal-err').textContent = 'Select at least one employee'; return; }
   const routeId = document.getElementById('m-route').value;
   const date    = document.getElementById('m-date').value;
   const dname   = document.getElementById('m-dname').value.trim();
@@ -731,7 +731,7 @@ async function loadSnackRegister() {
   el.innerHTML = `
     <div style="font-size:16px;font-weight:700;color:var(--primary);margin-bottom:16px">${dayLabel}</div>
     <div class="card" style="margin-bottom:16px">
-      <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text)">Snack Count Enter Karo</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text)">Enter Snack Count</div>
       <div class="two-col" style="margin-bottom:14px">
         <div>
           <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px">👩 Female Employees</label>
@@ -976,7 +976,7 @@ async function renderAdminCost() {
 
 async function openWeeklyAssignGrid(dateFrom, dateTo) {
   const roster = await fetch(`${API}/api/admin/roster?date_from=${dateFrom}&date_to=${dateTo}`).then(r => r.json()).catch(() => []);
-  if (!roster.length) { showToast('Is week mein koi roster entry nahi hai'); return; }
+  if (!roster.length) { showToast('No roster entries this week'); return; }
 
   const dates = [...new Set(roster.map(r => String(r.shift_date).substring(0,10)))].sort();
   const routes = [...new Map(roster.map(r => [r.route_id, {id: r.route_id, name: r.route_name}])).values()].sort((a,b) => a.name.localeCompare(b.name));
@@ -990,7 +990,7 @@ async function openWeeklyAssignGrid(dateFrom, dateTo) {
 
   // Build grid
   let html = `<h3>📋 Weekly Assignment Grid</h3>
-    <p style="color:#888;font-size:12px;margin-bottom:16px">Har route ke liye driver aur guard bharo → Save All karo</p>
+    <p style="color:#888;font-size:12px;margin-bottom:16px">Fill driver and guard for each route → Save All</p>
     <div style="overflow:auto">
     <table style="min-width:700px;font-size:12px">
     <thead><tr>
@@ -1161,7 +1161,7 @@ async function loadInvItems() {
   <table><thead><tr><th>Item</th><th>Unit</th><th>Total Purchased</th><th>Consumed</th><th>Balance</th><th>Min Stock</th><th>Last Purchase</th><th>Status</th><th></th></tr></thead><tbody>`;
 
   if (!items.length) {
-    html += `<tr><td colspan="9" style="text-align:center;color:#888;padding:30px">Koi item nahi. "+ Add Item" se shuru karo</td></tr>`;
+    html += `<tr><td colspan="9" style="text-align:center;color:#888;padding:30px">No items found. Add items via Purchases tab.</td></tr>`;
   } else {
     items.forEach(i => {
       const stock = parseFloat(i.current_stock);
@@ -1220,10 +1220,10 @@ async function submitInvItem(id) {
 
 function openAddStockModal(itemId, itemName, unit, costPerUnit) {
   showModal(`
-    <h3>+ Stock Add Karo</h3>
+    <h3>+ Add Stock</h3>
     <div style="color:#888;margin-bottom:16px;font-size:13px">Item: <b style="color:var(--text)">${itemName}</b></div>
     <div class="two-col">
-      <div class="form-row"><label>Quantity (${unit})</label><input id="inv-addqty" type="number" placeholder="Kitna stock aaya"></div>
+      <div class="form-row"><label>Quantity (${unit})</label><input id="inv-addqty" type="number" placeholder="Quantity received"></div>
       <div class="form-row"><label>Cost/Unit (₹)</label><input id="inv-addcost" type="number" value="${costPerUnit||0}" placeholder="Per unit cost"></div>
     </div>
     <div class="form-row"><label>Purchase Date</label><input id="inv-purchase-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
@@ -1237,7 +1237,7 @@ function openAddStockModal(itemId, itemName, unit, costPerUnit) {
 
 async function submitAddStock(itemId) {
   const qty = parseFloat(document.getElementById('inv-addqty').value)||0;
-  if (!qty) { document.getElementById('modal-err').textContent = 'Quantity bharo'; return; }
+  if (!qty) { document.getElementById('modal-err').textContent = 'Please enter quantity'; return; }
   const purchaseDate = document.getElementById('inv-purchase-date').value || new Date().toISOString().split('T')[0];
   const cost = parseFloat(document.getElementById('inv-addcost').value)||0;
   const res = await apiPost('/api/admin/inventory/log', { item_id: itemId, quantity: qty, log_type: 'add', log_date: purchaseDate, cost_per_unit: cost, note: document.getElementById('inv-addnote').value.trim() });
@@ -1282,7 +1282,7 @@ async function loadInvUse() {
     <table><thead><tr><th>Item</th><th>Stock Available</th><th>Used</th><th>No. of Employees</th><th>Note</th></tr></thead><tbody>`;
 
   if (!items.length) {
-    html += `<tr><td colspan="4" style="text-align:center;color:#888;padding:24px">Pehle items add karo</td></tr>`;
+    html += `<tr><td colspan="4" style="text-align:center;color:#888;padding:24px">No items found. Add a purchase first.</td></tr>`;
   } else {
     items.forEach(i => {
       html += `<tr>
@@ -1336,7 +1336,7 @@ async function submitDailyUse() {
   }
   const empCount = document.getElementById('inv-emp-count')?.value || '';
   if (empCount) await apiPost('/api/admin/settings', { [`inv_emp_${today}`]: empCount });
-  showToast(`✓ ${saved} items ka use save ho gaya!`);
+  showToast(`✓ ${saved} item(s) use saved!`);
   loadInvUse();
 }
 
@@ -1348,7 +1348,7 @@ async function loadInvLog() {
   <table><thead><tr><th>Date</th><th>Item</th><th>Type</th><th>Quantity</th><th>Note</th></tr></thead><tbody>`;
 
   if (!logs.length) {
-    html += `<tr><td colspan="5" style="text-align:center;color:#888;padding:24px">Koi log nahi</td></tr>`;
+    html += `<tr><td colspan="5" style="text-align:center;color:#888;padding:24px">No log entries found</td></tr>`;
   } else {
     logs.forEach(l => {
       const isAdd = l.log_type === 'add';
@@ -1411,7 +1411,7 @@ async function loadInvPurchases() {
     Object.entries(summary).forEach(([name, s]) => {
       html += `<tr>
         <td><b>${name}</b></td>
-        <td style="text-align:center;font-weight:700;color:var(--primary)">${s.count} baar</td>
+        <td style="text-align:center;font-weight:700;color:var(--primary)">${s.count} time(s)</td>
         <td style="font-weight:700">${s.totalQty} ${s.unit}</td>
         <td style="font-weight:700;color:var(--green)">₹${s.totalCost.toLocaleString('en-IN')}</td>
       </tr>`;
@@ -1423,7 +1423,7 @@ async function loadInvPurchases() {
   <table><thead><tr><th>Date of Purchase</th><th>Item</th><th>Total Unit</th><th>Cost per Unit</th><th>Total Cost</th><th></th></tr></thead><tbody>`;
 
   if (!monthPurchases.length) {
-    html += `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">Is mahine koi purchase nahi.</td></tr>`;
+    html += `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">No purchases this month.</td></tr>`;
   } else {
     monthPurchases.forEach(p => {
       const qty = parseFloat(p.quantity);
@@ -1453,7 +1453,7 @@ function openNewPurchaseModal() {
     </div>
     <datalist id="pur-items-list">${(window._invItemNames||[]).map(n=>`<option value="${n}">`).join('')}</datalist>
     <div class="two-col">
-      <div class="form-row"><label>Quantity *</label><input id="pur-qty" type="number" placeholder="Kitna aaya"></div>
+      <div class="form-row"><label>Quantity *</label><input id="pur-qty" type="number" placeholder="Quantity received"></div>
       <div class="form-row"><label>Cost/Unit (₹)</label><input id="pur-cost" type="number" placeholder="Per unit cost"></div>
     </div>
     <div class="form-row"><label>Purchase Date</label><input id="pur-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
@@ -1467,7 +1467,7 @@ function openNewPurchaseModal() {
 
 async function submitNewPurchase() {
   const itemName = document.getElementById('pur-itemname').value.trim();
-  if (!itemName) { document.getElementById('modal-err').textContent = 'Item name bharo'; return; }
+  if (!itemName) { document.getElementById('modal-err').textContent = 'Please enter item name'; return; }
   const unit = document.getElementById('pur-newunit').value.trim() || 'pcs';
   let itemId;
   const existing = (window._invItemMap||{})[itemName.toLowerCase()];
@@ -1479,7 +1479,7 @@ async function submitNewPurchase() {
     itemId = res.id;
   }
   const qty = parseFloat(document.getElementById('pur-qty').value)||0;
-  if (!qty) { document.getElementById('modal-err').textContent = 'Quantity bharo'; return; }
+  if (!qty) { document.getElementById('modal-err').textContent = 'Please enter quantity'; return; }
   const cost = parseFloat(document.getElementById('pur-cost').value)||0;
   const date = document.getElementById('pur-date').value || new Date().toISOString().split('T')[0];
   const note = document.getElementById('pur-note').value.trim();
@@ -1489,7 +1489,7 @@ async function submitNewPurchase() {
 }
 
 async function deletePurchaseLog(id) {
-  if (!confirm('Yeh purchase delete karo? Stock bhi reverse ho jayega.')) return;
+  if (!confirm('Delete this purchase? Stock will be reversed.')) return;
   const res = await apiPost('/api/admin/inventory/log/delete', { id });
   if (res.success) { showToast('Purchase deleted, stock updated.'); loadInvPurchases(); }
 }
@@ -1514,7 +1514,7 @@ async function renderCostSummary() {
         <input id="snack-cost-input" type="number" value="${snackCostPerEmp}" min="0" style="width:100px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px">
         <button class="btn-sm btn-sm-gold" style="font-size:12px" onclick="saveSnackCost()">Save</button>
       </div>
-      <span style="font-size:12px;color:#888">Yeh amount har employee ko har raat milta hai</span>
+      <span style="font-size:12px;color:#888">This amount is given to each employee every night</span>
     </div>
     <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border)">
       <button class="tab-btn ${summarySubTab==='daily'?'active':''}" onclick="summarySubTab='daily';renderCostSummary()">Daily Cost Summary</button>
@@ -1598,7 +1598,7 @@ async function loadDailyCostData() {
   const dayLabel = new Date(summaryDailyDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 
   if (!roster.length) {
-    el.innerHTML = `<div style="text-align:center;padding:40px;color:#888"><div style="font-size:32px;margin-bottom:10px">📋</div><div>${dayLabel}</div><div style="font-size:13px;margin-top:6px;color:#aaa">Koi data nahi</div></div>`;
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:#888"><div style="font-size:32px;margin-bottom:10px">📋</div><div>${dayLabel}</div><div style="font-size:13px;margin-top:6px;color:#aaa">No data found</div></div>`;
     return;
   }
 
@@ -1685,7 +1685,7 @@ async function loadCostSummary_data() {
   if (!roster.length) {
     const [yr, mo] = summaryMonth.split('-');
     const mLabel = new Date(yr, mo - 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-    el.innerHTML = `<div style="text-align:center;padding:60px;color:#888"><div style="font-size:32px;margin-bottom:12px">📊</div><div>${mLabel} mein koi data nahi</div></div>`;
+    el.innerHTML = `<div style="text-align:center;padding:60px;color:#888"><div style="font-size:32px;margin-bottom:12px">📊</div><div>No data found for ${mLabel}</div></div>`;
     return;
   }
 
@@ -1844,7 +1844,7 @@ async function loadDailyPlan() {
     el.innerHTML = `<div style="text-align:center;padding:60px;color:#888">
       <div style="font-size:36px;margin-bottom:12px">📋</div>
       <div style="font-size:16px">${dayLabel}</div>
-      <div style="font-size:13px;margin-top:8px;color:#aaa">Is din koi roster entry nahi hai</div>
+      <div style="font-size:13px;margin-top:8px;color:#aaa">No roster entries for this date</div>
     </div>`;
     return;
   }
