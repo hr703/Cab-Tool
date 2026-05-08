@@ -129,6 +129,8 @@ let routesCache = [];
 let employeesCache = [];
 let vendorsCache = [];
 let rosterWeekOffset = 0;
+let rosterDayMode = true;
+let rosterSelectedDate = new Date().toISOString().split('T')[0];
 
 async function initGoogle() {
   try {
@@ -248,30 +250,47 @@ function fmtDate(s) { return new Date(s + 'T00:00:00').toLocaleDateString('en-IN
 function fmtDateLong(s) { return new Date(s + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }); }
 
 async function renderAdminRoster() {
-  const dates = getWeekDates(rosterWeekOffset);
-  const roster = await fetch(`${API}/api/admin/roster?date_from=${dates[0]}&date_to=${dates[6]}`).then(r => r.json()).catch(() => []);
+  let dateFrom, dateTo, periodLabel;
+  if (rosterDayMode) {
+    dateFrom = dateTo = rosterSelectedDate;
+    periodLabel = new Date(rosterSelectedDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  } else {
+    const dates = getWeekDates(rosterWeekOffset);
+    dateFrom = dates[0]; dateTo = dates[6];
+    periodLabel = `${fmtDate(dates[0])} – ${fmtDate(dates[6])}`;
+  }
+  const roster = await fetch(`${API}/api/admin/roster?date_from=${dateFrom}&date_to=${dateTo}`).then(r => r.json()).catch(() => []);
   const totalCost = roster.reduce((s, r) => s + (parseFloat(r.cab_cost) || 0), 0);
   const assigned = roster.filter(r => r.driver_name).length;
   const guardAssigned = roster.filter(r => r.guard_name).length;
 
   let html = `
     <div class="kpi-row">
-      <div class="kpi"><div class="kpi-label">Week</div><div class="kpi-val" style="font-size:15px">${fmtDate(dates[0])} – ${fmtDate(dates[6])}</div></div>
+      <div class="kpi"><div class="kpi-label">${rosterDayMode ? 'Date' : 'Week'}</div><div class="kpi-val" style="font-size:14px">${periodLabel}</div></div>
       <div class="kpi"><div class="kpi-label">Total Entries</div><div class="kpi-val">${roster.length}</div></div>
       <div class="kpi"><div class="kpi-label">Cab Assigned</div><div class="kpi-val" style="color:var(--green)">${assigned}</div></div>
       <div class="kpi"><div class="kpi-label">Guard Assigned</div><div class="kpi-val" style="color:var(--green)">${guardAssigned}</div></div>
-      <div class="kpi"><div class="kpi-label">Week Cost</div><div class="kpi-val">₹${totalCost.toLocaleString('en-IN')}</div></div>
+      <div class="kpi"><div class="kpi-label">Cost</div><div class="kpi-val">₹${totalCost.toLocaleString('en-IN')}</div></div>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <div style="display:flex;gap:8px">
-        <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset--;renderAdminRoster()">◀ Prev</button>
-        <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset=0;renderAdminRoster()">This Week</button>
-        <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset++;renderAdminRoster()">Next ▶</button>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        ${rosterDayMode ? `
+          <button class="btn-sm btn-sm-outline" onclick="shiftRosterDay(-1)">◀ Prev</button>
+          <input type="date" value="${rosterSelectedDate}" onchange="rosterSelectedDate=this.value;renderAdminRoster()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;color:var(--text);background:#fff">
+          <button class="btn-sm btn-sm-outline" onclick="rosterSelectedDate=new Date().toISOString().split('T')[0];renderAdminRoster()">Today</button>
+          <button class="btn-sm btn-sm-outline" onclick="shiftRosterDay(1)">Next ▶</button>
+          <button class="btn-sm btn-sm-outline" onclick="rosterDayMode=false;renderAdminRoster()" style="color:#aaa;font-size:12px">Week View</button>
+        ` : `
+          <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset--;renderAdminRoster()">◀ Prev</button>
+          <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset=0;renderAdminRoster()">This Week</button>
+          <button class="btn-sm btn-sm-outline" onclick="rosterWeekOffset++;renderAdminRoster()">Next ▶</button>
+          <button class="btn-sm btn-sm-outline" onclick="rosterDayMode=true;rosterSelectedDate=new Date().toISOString().split('T')[0];renderAdminRoster()" style="color:#aaa;font-size:12px">Day View</button>
+        `}
       </div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn-sm btn-sm-gold" onclick="openAddRosterModal()">+ Add to Roster</button>
-        <button class="btn-sm btn-sm-outline" onclick="openWeeklyAssignGrid('${dates[0]}','${dates[6]}')" style="color:#4fc3f7;border-color:#4fc3f7">📋 Weekly Assignment</button>
-        <button class="btn-sm btn-sm-outline" onclick="downloadExcel('${dates[0]}','${dates[6]}')" style="color:#4CAF50;border-color:#4CAF50">⬇ Download Excel</button>
+        <button class="btn-sm btn-sm-outline" onclick="openWeeklyAssignGrid('${dateFrom}','${dateTo}')" style="color:#4fc3f7;border-color:#4fc3f7">📋 Weekly Assignment</button>
+        <button class="btn-sm btn-sm-outline" onclick="downloadExcel('${dateFrom}','${dateTo}')" style="color:#4CAF50;border-color:#4CAF50">⬇ Download Excel</button>
       </div>
     </div>
     <div class="card" style="padding:0;overflow:auto">
@@ -306,6 +325,13 @@ async function renderAdminRoster() {
   }
   html += `</tbody></table></div>`;
   document.getElementById('tab-roster').innerHTML = html;
+}
+
+function shiftRosterDay(n) {
+  const d = new Date(rosterSelectedDate + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  rosterSelectedDate = d.toISOString().split('T')[0];
+  renderAdminRoster();
 }
 
 function openAddRosterModal() {
