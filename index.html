@@ -267,6 +267,7 @@ async function renderAdminRoster() {
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn-sm btn-sm-gold" onclick="openAddRosterModal()">+ Add to Roster</button>
+        <button class="btn-sm btn-sm-outline" onclick="autoAssignWeek('${dates[0]}','${dates[6]}')" style="color:#4fc3f7;border-color:#4fc3f7" title="Routes mein saved driver/guard se sabko assign karo">⚡ Auto-Assign</button>
         <button class="btn-sm btn-sm-outline" onclick="downloadExcel('${dates[0]}','${dates[6]}')" style="color:#4CAF50;border-color:#4CAF50">⬇ Download Excel</button>
       </div>
     </div>
@@ -438,6 +439,24 @@ function openRouteModal(r) {
       <div class="form-row"><label>Cab Cost per Trip (₹)</label><input id="r-cost" type="number" value="${r.cab_cost || 0}"></div>
     </div>
     <div class="form-row"><label>Guard Cost per Trip (₹)</label><input id="r-gcost" type="number" value="${r.guard_cost || 0}" placeholder="Security guard cost per night"></div>
+    <div style="border-top:1px solid var(--border);margin:14px 0 12px;padding-top:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">🚗 Default Cab (har week yahi use hoga)</div>
+      <div class="two-col">
+        <div class="form-row"><label>Driver Name</label><input id="r-dname" value="${r.default_driver_name || ''}"></div>
+        <div class="form-row"><label>Driver Mobile</label><input id="r-dmobile" value="${r.default_driver_mobile || ''}"></div>
+      </div>
+      <div class="two-col">
+        <div class="form-row"><label>Vehicle Type</label><input id="r-vtype" value="${r.default_vehicle_type || ''}" placeholder="e.g. Swift Dzire"></div>
+        <div class="form-row"><label>Vehicle Number</label><input id="r-vnum" value="${r.default_vehicle_number || ''}" placeholder="e.g. HR 26 AX 1234"></div>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);margin-bottom:12px;padding-top:12px">
+      <div style="font-size:12px;font-weight:700;color:#4fc3f7;margin-bottom:10px">🛡️ Default Guard (har week yahi use hoga)</div>
+      <div class="two-col">
+        <div class="form-row"><label>Guard Name</label><input id="r-gname" value="${r.default_guard_name || ''}"></div>
+        <div class="form-row"><label>Guard Mobile</label><input id="r-gmobile" value="${r.default_guard_mobile || ''}"></div>
+      </div>
+    </div>
     <div id="modal-err" class="err-msg"></div>
     <div class="modal-actions">
       <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
@@ -446,7 +465,7 @@ function openRouteModal(r) {
 }
 
 async function submitRoute(id) {
-  const data = { route_name: document.getElementById('r-name').value.trim(), description: document.getElementById('r-desc').value.trim(), pick_location: document.getElementById('r-pick').value.trim(), drop_location: document.getElementById('r-drop').value.trim(), pick_time: document.getElementById('r-ptime').value.trim(), drop_time: document.getElementById('r-dtime').value.trim(), report_time: document.getElementById('r-rtime').value.trim(), cab_cost: parseFloat(document.getElementById('r-cost').value) || 0, guard_cost: parseFloat(document.getElementById('r-gcost').value) || 0 };
+  const data = { route_name: document.getElementById('r-name').value.trim(), description: document.getElementById('r-desc').value.trim(), pick_location: document.getElementById('r-pick').value.trim(), drop_location: document.getElementById('r-drop').value.trim(), pick_time: document.getElementById('r-ptime').value.trim(), drop_time: document.getElementById('r-dtime').value.trim(), report_time: document.getElementById('r-rtime').value.trim(), cab_cost: parseFloat(document.getElementById('r-cost').value) || 0, guard_cost: parseFloat(document.getElementById('r-gcost').value) || 0, default_driver_name: document.getElementById('r-dname').value.trim(), default_driver_mobile: document.getElementById('r-dmobile').value.trim(), default_vehicle_type: document.getElementById('r-vtype').value.trim(), default_vehicle_number: document.getElementById('r-vnum').value.trim(), default_guard_name: document.getElementById('r-gname').value.trim(), default_guard_mobile: document.getElementById('r-gmobile').value.trim() };
   if (!data.route_name) { document.getElementById('modal-err').textContent = 'Route name required'; return; }
   if (id) data.id = id;
   const res = await apiPost(id ? '/api/admin/routes/update' : '/api/admin/routes', data);
@@ -685,6 +704,17 @@ async function renderAdminCost() {
   document.getElementById('tab-cost').innerHTML = html;
   } catch(err) {
     document.getElementById('tab-cost').innerHTML = `<div style="padding:20px;color:red">Error: ${err.message || err}</div>`;
+  }
+}
+
+async function autoAssignWeek(dateFrom, dateTo) {
+  if (!confirm(`${dateFrom} se ${dateTo} tak saari pending entries mein routes ke default driver/guard assign kar dein?`)) return;
+  const res = await apiPost('/api/admin/auto-assign', { date_from: dateFrom, date_to: dateTo });
+  if (res.success) {
+    showToast(`✓ ${res.cab_assigned} cab + ${res.guard_assigned} guard assigned!`);
+    renderAdminRoster();
+  } else {
+    showToast('Error: ' + (res.error || 'Failed'));
   }
 }
 

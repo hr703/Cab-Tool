@@ -100,6 +100,12 @@ def init_db():
     ''')
     # Migrations
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS guard_cost NUMERIC DEFAULT 0")
+    cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_driver_name TEXT DEFAULT ''")
+    cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_driver_mobile TEXT DEFAULT ''")
+    cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_vehicle_type TEXT DEFAULT ''")
+    cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_vehicle_number TEXT DEFAULT ''")
+    cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_guard_name TEXT DEFAULT ''")
+    cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_guard_mobile TEXT DEFAULT ''")
     cur.execute("""
         ALTER TABLE night_employees ADD COLUMN IF NOT EXISTS pickup_address TEXT DEFAULT ''
     """)
@@ -564,11 +570,14 @@ class Handler(BaseHTTPRequestHandler):
 
             elif path == '/api/admin/routes':
                 cur.execute('''
-                    INSERT INTO routes (route_name, description, pick_location, drop_location, pick_time, drop_time, report_time, cab_cost, guard_cost)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+                    INSERT INTO routes (route_name, description, pick_location, drop_location, pick_time, drop_time, report_time, cab_cost, guard_cost, default_driver_name, default_driver_mobile, default_vehicle_type, default_vehicle_number, default_guard_name, default_guard_mobile)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
                 ''', (body['route_name'], body.get('description',''), body.get('pick_location',''),
                       body.get('drop_location',''), body.get('pick_time',''), body.get('drop_time',''),
-                      body.get('report_time',''), body.get('cab_cost', 0), body.get('guard_cost', 0)))
+                      body.get('report_time',''), body.get('cab_cost', 0), body.get('guard_cost', 0),
+                      body.get('default_driver_name',''), body.get('default_driver_mobile',''),
+                      body.get('default_vehicle_type',''), body.get('default_vehicle_number',''),
+                      body.get('default_guard_name',''), body.get('default_guard_mobile','')))
                 new_id = cur.fetchone()['id']
                 conn.commit()
                 self.send_json({'success': True, 'id': new_id})
@@ -576,10 +585,15 @@ class Handler(BaseHTTPRequestHandler):
             elif path == '/api/admin/routes/update':
                 cur.execute('''
                     UPDATE routes SET route_name=%s, description=%s, pick_location=%s, drop_location=%s,
-                    pick_time=%s, drop_time=%s, report_time=%s, cab_cost=%s, guard_cost=%s WHERE id=%s
+                    pick_time=%s, drop_time=%s, report_time=%s, cab_cost=%s, guard_cost=%s,
+                    default_driver_name=%s, default_driver_mobile=%s, default_vehicle_type=%s,
+                    default_vehicle_number=%s, default_guard_name=%s, default_guard_mobile=%s WHERE id=%s
                 ''', (body['route_name'], body.get('description',''), body.get('pick_location',''),
                       body.get('drop_location',''), body.get('pick_time',''), body.get('drop_time',''),
-                      body.get('report_time',''), body.get('cab_cost', 0), body.get('guard_cost', 0), body['id']))
+                      body.get('report_time',''), body.get('cab_cost', 0), body.get('guard_cost', 0),
+                      body.get('default_driver_name',''), body.get('default_driver_mobile',''),
+                      body.get('default_vehicle_type',''), body.get('default_vehicle_number',''),
+                      body.get('default_guard_name',''), body.get('default_guard_mobile',''), body['id']))
                 conn.commit()
                 self.send_json({'success': True})
 
@@ -642,6 +656,38 @@ class Handler(BaseHTTPRequestHandler):
                         pass
                 conn.commit()
                 self.send_json({'success': True, 'added': added})
+
+            elif path == '/api/admin/auto-assign':
+                date_from = body.get('date_from')
+                date_to   = body.get('date_to')
+                cur.execute('''
+                    SELECT r.id, ro.default_driver_name, ro.default_driver_mobile,
+                           ro.default_vehicle_type, ro.default_vehicle_number,
+                           ro.default_guard_name, ro.default_guard_mobile
+                    FROM roster r
+                    JOIN routes ro ON r.route_id = ro.id
+                    WHERE r.shift_date BETWEEN %s AND %s
+                ''', (date_from, date_to))
+                entries = cur.fetchall()
+                cab_done = 0; guard_done = 0
+                for e in entries:
+                    if e['default_driver_name']:
+                        cur.execute('''
+                            INSERT INTO cab_assignments (roster_id, vendor_id, driver_name, driver_mobile, vehicle_type, vehicle_number)
+                            VALUES (%s, NULL, %s, %s, %s, %s)
+                            ON CONFLICT (roster_id) DO NOTHING
+                        ''', (e['id'], e['default_driver_name'], e['default_driver_mobile'],
+                              e['default_vehicle_type'], e['default_vehicle_number']))
+                        cab_done += 1
+                    if e['default_guard_name']:
+                        cur.execute('''
+                            INSERT INTO security_assignments (roster_id, vendor_id, guard_name, guard_mobile)
+                            VALUES (%s, NULL, %s, %s)
+                            ON CONFLICT (roster_id) DO NOTHING
+                        ''', (e['id'], e['default_guard_name'], e['default_guard_mobile']))
+                        guard_done += 1
+                conn.commit()
+                self.send_json({'success': True, 'cab_assigned': cab_done, 'guard_assigned': guard_done})
 
             elif path == '/api/admin/roster/delete':
                 cur.execute('DELETE FROM roster WHERE id=%s', (body['id'],))
