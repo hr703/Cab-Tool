@@ -197,6 +197,7 @@ async function renderAdminView() {
       <button class="tab-btn" onclick="adminTab('routes',this)">Routes</button>
       <button class="tab-btn" onclick="adminTab('employees',this)">Employees</button>
       <button class="tab-btn" onclick="adminTab('vendors',this)">Vendors</button>
+      <button class="tab-btn" onclick="adminTab('daily',this)">Daily Plan</button>
       <button class="tab-btn" onclick="adminTab('cost',this)">Cost Report</button>
       <button class="tab-btn" onclick="adminTab('costsplit',this)">Cost Split</button>
     </div>
@@ -204,6 +205,7 @@ async function renderAdminView() {
     <div id="tab-routes" class="tab-content"></div>
     <div id="tab-employees" class="tab-content"></div>
     <div id="tab-vendors" class="tab-content"></div>
+    <div id="tab-daily" class="tab-content"></div>
     <div id="tab-cost" class="tab-content"></div>
     <div id="tab-costsplit" class="tab-content"></div>`;
   await Promise.all([loadRoutes(), loadEmployees(), loadVendors()]);
@@ -219,6 +221,7 @@ function adminTab(name, btn) {
   else if (name === 'routes') renderAdminRoutes();
   else if (name === 'employees') renderAdminEmployees();
   else if (name === 'vendors') renderAdminVendors();
+  else if (name === 'daily') { renderDailyPlan(); }
   else if (name === 'cost') { costViewAll = true; renderAdminCost(); }
   else if (name === 'costsplit') { costViewAll = true; renderAdminCostSplit(); }
 }
@@ -853,6 +856,154 @@ async function adminSubmitGuard(rosterId) {
   if (!data.guard_name || !data.guard_mobile) { document.getElementById('modal-err').textContent = 'Guard name and mobile required'; return; }
   const res = await apiPost('/api/security/assign', data);
   if (res.success) { closeModal(); showToast('Guard assigned!'); renderAdminRoster(); }
+  else document.getElementById('modal-err').textContent = res.error || 'Error';
+}
+
+// ── DAILY PLAN TAB ────────────────────────────────────────
+let dailyDate = new Date().toISOString().split('T')[0];
+
+async function renderDailyPlan() {
+  const el = document.getElementById('tab-daily');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn-sm btn-sm-outline" onclick="shiftDay(-1)">◀ Prev</button>
+      <input type="date" id="daily-date-picker" value="${dailyDate}" onchange="dailyDate=this.value;loadDailyPlan()" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;color:var(--text);background:#fff">
+      <button class="btn-sm btn-sm-outline" onclick="shiftDay(1)">Next ▶</button>
+      <button class="btn-sm btn-sm-outline" onclick="dailyDate=new Date().toISOString().split('T')[0];document.getElementById('daily-date-picker').value=dailyDate;loadDailyPlan()">Today</button>
+    </div>
+    <div id="daily-plan-content"><div style="color:#888;padding:20px">Loading...</div></div>`;
+  loadDailyPlan();
+}
+
+function shiftDay(n) {
+  const d = new Date(dailyDate + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  dailyDate = d.toISOString().split('T')[0];
+  document.getElementById('daily-date-picker').value = dailyDate;
+  loadDailyPlan();
+}
+
+async function loadDailyPlan() {
+  const el = document.getElementById('daily-plan-content');
+  if (!el) return;
+  el.innerHTML = '<div style="color:#888;padding:20px">Loading...</div>';
+  const roster = await fetch(`${API}/api/admin/roster?date_from=${dailyDate}&date_to=${dailyDate}`).then(r => r.json()).catch(() => []);
+
+  const dayLabel = new Date(dailyDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+
+  if (!roster.length) {
+    el.innerHTML = `<div style="text-align:center;padding:60px;color:#888">
+      <div style="font-size:36px;margin-bottom:12px">📋</div>
+      <div style="font-size:16px">${dayLabel}</div>
+      <div style="font-size:13px;margin-top:8px;color:#aaa">Is din koi roster entry nahi hai</div>
+    </div>`;
+    return;
+  }
+
+  // Group by route
+  const byRoute = {};
+  roster.forEach(r => {
+    if (!byRoute[r.route_name]) byRoute[r.route_name] = { route_id: r.route_id, cab: { driver_name: r.driver_name, driver_mobile: r.driver_mobile, vehicle_type: r.vehicle_type, vehicle_number: r.vehicle_number }, guard: { guard_name: r.guard_name, guard_mobile: r.guard_mobile }, employees: [] };
+    byRoute[r.route_name].employees.push({ name: r.emp_name, mobile: r.mobile, pickup: r.pickup_address || '', roster_id: r.id });
+  });
+
+  const totalEmp = roster.length;
+  const cabDone = Object.values(byRoute).filter(r => r.cab.driver_name).length;
+  const guardDone = Object.values(byRoute).filter(r => r.guard.guard_name).length;
+  const totalRoutes = Object.keys(byRoute).length;
+
+  let html = `
+    <div style="font-size:16px;font-weight:700;color:var(--primary);margin-bottom:16px">${dayLabel}</div>
+    <div class="kpi-row" style="margin-bottom:20px">
+      <div class="kpi"><div class="kpi-label">Total Employees</div><div class="kpi-val">${totalEmp}</div></div>
+      <div class="kpi"><div class="kpi-label">Routes</div><div class="kpi-val">${totalRoutes}</div></div>
+      <div class="kpi"><div class="kpi-label">Cab Assigned</div><div class="kpi-val" style="color:${cabDone===totalRoutes?'var(--green)':'var(--primary)'}">${cabDone}/${totalRoutes}</div></div>
+      <div class="kpi"><div class="kpi-label">Guard Assigned</div><div class="kpi-val" style="color:${guardDone===totalRoutes?'var(--green)':'#4fc3f7'}">${guardDone}/${totalRoutes}</div></div>
+    </div>`;
+
+  Object.entries(byRoute).sort().forEach(([routeName, data]) => {
+    const cabStatus = data.cab.driver_name
+      ? `<span class="badge badge-green">✓ ${data.cab.driver_name} | ${data.cab.vehicle_type || ''} ${data.cab.vehicle_number || ''}</span>`
+      : `<span class="badge badge-red">Cab Pending</span>`;
+    const guardStatus = data.guard.guard_name
+      ? `<span class="badge badge-green">✓ ${data.guard.guard_name}</span>`
+      : `<span class="badge badge-red">Guard Pending</span>`;
+
+    html += `<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--primary)">${routeName}</div>
+          <div style="font-size:12px;color:#888;margin-top:4px">${data.employees.length} employee${data.employees.length>1?'s':''}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-sm btn-sm-gold" style="font-size:12px" onclick='openDailyAssign("${routeName}",${data.route_id},"${dailyDate}",${JSON.stringify(data.cab).replace(/'/g,"&#39;")},${JSON.stringify(data.guard).replace(/'/g,"&#39;")})'>
+            ${data.cab.driver_name ? '✏️ Edit Cab' : '🚗 Assign Cab'}
+          </button>
+          <button class="btn-sm btn-sm-outline" style="font-size:12px;color:#4fc3f7;border-color:#4fc3f7" onclick='openDailyAssign("${routeName}",${data.route_id},"${dailyDate}",${JSON.stringify(data.cab).replace(/'/g,"&#39;")},${JSON.stringify(data.guard).replace(/'/g,"&#39;")})'>
+            ${data.guard.guard_name ? '✏️ Edit Guard' : '🛡️ Assign Guard'}
+          </button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        ${cabStatus} ${guardStatus}
+      </div>
+      <table style="width:100%"><thead><tr>
+        <th>Employee</th><th>Mobile</th><th>Pickup Address</th>
+      </tr></thead><tbody>`;
+
+    data.employees.forEach(e => {
+      html += `<tr>
+        <td><b>${e.name}</b></td>
+        <td style="color:#888">${e.mobile || '—'}</td>
+        <td style="color:#888;font-size:12px">${e.pickup || '—'}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+function openDailyAssign(routeName, routeId, date, cab, guard) {
+  showModal(`
+    <h3>📋 ${routeName} — ${fmtDate(date)}</h3>
+    <div style="border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">🚗 Cab Details</div>
+      <div class="two-col">
+        <div class="form-row"><label>Driver Name</label><input id="dd-dname" value="${cab.driver_name||''}"></div>
+        <div class="form-row"><label>Driver Mobile</label><input id="dd-dmobile" value="${cab.driver_mobile||''}"></div>
+      </div>
+      <div class="two-col">
+        <div class="form-row"><label>Vehicle Type</label><input id="dd-vtype" value="${cab.vehicle_type||''}" placeholder="e.g. Swift Dzire"></div>
+        <div class="form-row"><label>Vehicle Number</label><input id="dd-vnum" value="${cab.vehicle_number||''}" placeholder="e.g. HR 26 AX 1234"></div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:#4fc3f7;margin-bottom:10px">🛡️ Security Guard</div>
+      <div class="two-col">
+        <div class="form-row"><label>Guard Name</label><input id="dd-gname" value="${guard.guard_name||''}"></div>
+        <div class="form-row"><label>Guard Mobile</label><input id="dd-gmobile" value="${guard.guard_mobile||''}"></div>
+      </div>
+    </div>
+    <div id="modal-err" class="err-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm btn-sm-gold" onclick="submitDailyAssign(${routeId},'${date}')">💾 Save</button>
+    </div>`);
+}
+
+async function submitDailyAssign(routeId, date) {
+  const assignment = {
+    route_id: routeId, date,
+    driver_name: document.getElementById('dd-dname').value.trim(),
+    driver_mobile: document.getElementById('dd-dmobile').value.trim(),
+    vehicle_type: document.getElementById('dd-vtype').value.trim(),
+    vehicle_number: document.getElementById('dd-vnum').value.trim(),
+    guard_name: document.getElementById('dd-gname').value.trim(),
+    guard_mobile: document.getElementById('dd-gmobile').value.trim()
+  };
+  const res = await apiPost('/api/admin/bulk-assign', { assignments: [assignment] });
+  if (res.success) { closeModal(); showToast(`✓ Assigned!`); loadDailyPlan(); }
   else document.getElementById('modal-err').textContent = res.error || 'Error';
 }
 
