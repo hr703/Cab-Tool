@@ -644,7 +644,7 @@ async function renderAdminEmployees() {
   document.getElementById('tab-employees').innerHTML = `
     <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border)">
       <button class="tab-btn ${empSubTab==='list'?'active':''}" onclick="empSubTab='list';renderAdminEmployees()">Employees</button>
-      <button class="tab-btn ${empSubTab==='roster'?'active':''}" onclick="empSubTab='roster';renderAdminEmployees()">Weekly Roster</button>
+
       <button class="tab-btn ${empSubTab==='routes'?'active':''}" onclick="empSubTab='routes';renderAdminEmployees()">Routes</button>
       <button class="tab-btn ${empSubTab==='daily'?'active':''}" onclick="empSubTab='daily';renderAdminEmployees()">Daily Plan</button>
       <button class="tab-btn ${empSubTab==='vendors'?'active':''}" onclick="empSubTab='vendors';renderAdminEmployees()">Vendors</button>
@@ -653,7 +653,7 @@ async function renderAdminEmployees() {
     </div>
     <div id="emp-sub-content"></div>`;
   if (empSubTab === 'list') renderEmpList();
-  else if (empSubTab === 'roster') renderAdminRoster();
+
   else if (empSubTab === 'routes') renderAdminRoutes();
   else if (empSubTab === 'daily') renderDailyPlan();
   else if (empSubTab === 'vendors') renderAdminVendors();
