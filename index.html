@@ -1221,7 +1221,8 @@ function openAddStockModal(itemId, itemName, unit) {
     <h3>+ Stock Add Karo</h3>
     <div style="color:#888;margin-bottom:16px;font-size:13px">Item: <b style="color:var(--text)">${itemName}</b></div>
     <div class="form-row"><label>Quantity (${unit})</label><input id="inv-addqty" type="number" placeholder="Kitna stock aaya"></div>
-    <div class="form-row"><label>Note (optional)</label><input id="inv-addnote" placeholder="e.g. New purchase"></div>
+    <div class="form-row"><label>Purchase Date</label><input id="inv-purchase-date" type="date" value="${new Date().toISOString().split('T')[0]}"></div>
+    <div class="form-row"><label>Note (optional)</label><input id="inv-addnote" placeholder="e.g. Vendor name, invoice no."></div>
     <div id="modal-err" class="err-msg"></div>
     <div class="modal-actions">
       <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
@@ -1232,7 +1233,8 @@ function openAddStockModal(itemId, itemName, unit) {
 async function submitAddStock(itemId) {
   const qty = parseFloat(document.getElementById('inv-addqty').value)||0;
   if (!qty) { document.getElementById('modal-err').textContent = 'Quantity bharo'; return; }
-  const res = await apiPost('/api/admin/inventory/log', { item_id: itemId, quantity: qty, log_type: 'add', log_date: new Date().toISOString().split('T')[0], note: document.getElementById('inv-addnote').value.trim() });
+  const purchaseDate = document.getElementById('inv-purchase-date').value || new Date().toISOString().split('T')[0];
+  const res = await apiPost('/api/admin/inventory/log', { item_id: itemId, quantity: qty, log_type: 'add', log_date: purchaseDate, note: document.getElementById('inv-addnote').value.trim() });
   if (res.success) { closeModal(); showToast(`✓ Stock added!`); loadInvItems(); }
 }
 
