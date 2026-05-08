@@ -1438,11 +1438,17 @@ async function loadInvPurchases() {
 }
 
 function openNewPurchaseModal() {
-  const opts = window._invItemOpts || '';
+  const opts = (window._invItemOpts || '') + `<option value="__new__">➕ Add New Item...</option>`;
   showModal(`
     <h3>🛒 New Purchase</h3>
     <div class="form-row"><label>Item *</label>
-      <select id="pur-item" onchange="prefillPurchaseCost(this)">${opts}</select>
+      <select id="pur-item" onchange="onPurItemChange(this)">${opts}</select>
+    </div>
+    <div id="pur-newitem-row" style="display:none">
+      <div class="two-col">
+        <div class="form-row"><label>New Item Name *</label><input id="pur-newname" placeholder="e.g. Oats"></div>
+        <div class="form-row"><label>Unit</label><input id="pur-newunit" placeholder="pcs / kg / box" value="pcs"></div>
+      </div>
     </div>
     <div class="two-col">
       <div class="form-row"><label>Quantity *</label><input id="pur-qty" type="number" placeholder="Kitna aaya"></div>
@@ -1455,16 +1461,32 @@ function openNewPurchaseModal() {
       <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
       <button class="btn-sm btn-sm-gold" onclick="submitNewPurchase()">Save Purchase</button>
     </div>`);
-  prefillPurchaseCost(document.getElementById('pur-item'));
+  onPurItemChange(document.getElementById('pur-item'));
 }
 
-function prefillPurchaseCost(sel) {
-  const opt = sel.options[sel.selectedIndex];
-  if (opt) document.getElementById('pur-cost').value = opt.dataset.cost || 0;
+function onPurItemChange(sel) {
+  const val = sel.value;
+  document.getElementById('pur-newitem-row').style.display = val === '__new__' ? 'block' : 'none';
+  if (val !== '__new__') {
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('pur-cost').value = opt?.dataset.cost || 0;
+  } else {
+    document.getElementById('pur-cost').value = '';
+  }
 }
 
 async function submitNewPurchase() {
-  const itemId = parseInt(document.getElementById('pur-item').value);
+  let itemId = document.getElementById('pur-item').value;
+  if (itemId === '__new__') {
+    const name = document.getElementById('pur-newname').value.trim();
+    if (!name) { document.getElementById('modal-err').textContent = 'Item name bharo'; return; }
+    const unit = document.getElementById('pur-newunit').value.trim() || 'pcs';
+    const res = await apiPost('/api/admin/inventory/add', { item_name: name, unit, current_stock: 0, min_stock: 5, cost_per_unit: 0 });
+    if (!res.success) { document.getElementById('modal-err').textContent = 'Item create failed'; return; }
+    itemId = res.id;
+  } else {
+    itemId = parseInt(itemId);
+  }
   const qty = parseFloat(document.getElementById('pur-qty').value)||0;
   if (!qty) { document.getElementById('modal-err').textContent = 'Quantity bharo'; return; }
   const cost = parseFloat(document.getElementById('pur-cost').value)||0;
