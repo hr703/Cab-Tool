@@ -313,16 +313,36 @@ function openAddRosterModal() {
   showModal(`
     <h3>Add to Roster</h3>
     <div class="form-row"><label>Employee</label><select id="m-emp" onchange="updatePickupAddr(${empData})">${empOpts}</select></div>
-    <div id="pickup-addr-box" style="background:#FFF7F2;border:1px solid #FFD4B3;border-radius:6px;padding:8px 12px;font-size:13px;margin-bottom:12px;color:#555">
+    <div id="pickup-addr-box" style="background:#FFF7F2;border:1px solid #FFD4B3;border-radius:6px;padding:8px 12px;font-size:13px;margin-bottom:12px">
       <span style="font-size:11px;color:#888;display:block;margin-bottom:2px">📍 Pickup Address</span>
       <span id="pickup-addr-text" style="color:#2D2D2D;font-weight:500">${employeesCache[0]?.pickup_address || '—'}</span>
     </div>
-    <div class="form-row"><label>Route</label><select id="m-route">${routeOpts}</select></div>
-    <div class="form-row"><label>Shift Date</label><select id="m-date">${dateOpts}</select></div>
+    <div class="two-col">
+      <div class="form-row"><label>Route</label><select id="m-route">${routeOpts}</select></div>
+      <div class="form-row"><label>Shift Date</label><select id="m-date">${dateOpts}</select></div>
+    </div>
+    <div style="border-top:1px solid var(--border);margin:14px 0 12px;padding-top:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">🚗 Cab Details <span style="color:#aaa;font-weight:400">(optional)</span></div>
+      <div class="two-col">
+        <div class="form-row"><label>Driver Name</label><input id="m-dname" placeholder="Driver ka naam"></div>
+        <div class="form-row"><label>Driver Mobile</label><input id="m-dmobile" placeholder="10-digit"></div>
+      </div>
+      <div class="two-col">
+        <div class="form-row"><label>Vehicle Type</label><input id="m-vtype" placeholder="e.g. Swift Dzire"></div>
+        <div class="form-row"><label>Vehicle Number</label><input id="m-vnum" placeholder="e.g. HR 26 AX 1234"></div>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);margin-bottom:12px;padding-top:12px">
+      <div style="font-size:12px;font-weight:700;color:#4fc3f7;margin-bottom:10px">🛡️ Security Guard <span style="color:#aaa;font-weight:400">(optional)</span></div>
+      <div class="two-col">
+        <div class="form-row"><label>Guard Name</label><input id="m-gname" placeholder="Guard ka naam"></div>
+        <div class="form-row"><label>Guard Mobile</label><input id="m-gmobile" placeholder="10-digit"></div>
+      </div>
+    </div>
     <div id="modal-err" class="err-msg"></div>
     <div class="modal-actions">
       <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
-      <button class="btn-sm btn-sm-gold" onclick="submitAddRoster()">Add</button>
+      <button class="btn-sm btn-sm-gold" onclick="submitAddRoster()">Add to Roster</button>
     </div>`);
 }
 
@@ -332,9 +352,34 @@ function updatePickupAddr(addrMap) {
 }
 
 async function submitAddRoster() {
-  const res = await apiPost('/api/admin/roster', { entries: [{ employee_id: document.getElementById('m-emp').value, route_id: document.getElementById('m-route').value, shift_date: document.getElementById('m-date').value }] });
-  if (res.success) { closeModal(); showToast('Added to roster'); renderAdminRoster(); }
-  else document.getElementById('modal-err').textContent = res.error || 'Already exists for this date';
+  const empId    = document.getElementById('m-emp').value;
+  const routeId  = document.getElementById('m-route').value;
+  const date     = document.getElementById('m-date').value;
+  const dname    = document.getElementById('m-dname').value.trim();
+  const dmobile  = document.getElementById('m-dmobile').value.trim();
+  const vtype    = document.getElementById('m-vtype').value.trim();
+  const vnum     = document.getElementById('m-vnum').value.trim();
+  const gname    = document.getElementById('m-gname').value.trim();
+  const gmobile  = document.getElementById('m-gmobile').value.trim();
+
+  const res = await apiPost('/api/admin/roster', { entries: [{ employee_id: empId, route_id: routeId, shift_date: date }] });
+  if (!res.success) { document.getElementById('modal-err').textContent = res.error || 'Already exists for this date'; return; }
+
+  // Fetch the new roster_id
+  const roster = await fetch(`${API}/api/admin/roster?date_from=${date}&date_to=${date}`).then(r => r.json()).catch(() => []);
+  const entry = roster.find(r => String(r.employee_id) === String(empId) && String(r.shift_date).substring(0,10) === date);
+  const rosterId = entry?.id;
+
+  if (rosterId && dname) {
+    await apiPost('/api/cab/assign', { roster_id: rosterId, vendor_id: null, driver_name: dname, driver_mobile: dmobile, vehicle_type: vtype, vehicle_number: vnum });
+  }
+  if (rosterId && gname) {
+    await apiPost('/api/security/assign', { roster_id: rosterId, vendor_id: null, guard_name: gname, guard_mobile: gmobile });
+  }
+
+  closeModal();
+  showToast('Roster mein add ho gaya!');
+  renderAdminRoster();
 }
 
 async function deleteRosterEntry(id) {
