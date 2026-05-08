@@ -1158,10 +1158,10 @@ async function loadInvItems() {
   }
 
   html += `<div class="card" style="padding:0;overflow:auto">
-  <table><thead><tr><th>Item</th><th>Unit</th><th>Current Stock</th><th>Min Stock</th><th>Cost/Unit</th><th>Last Purchase</th><th>Status</th><th></th></tr></thead><tbody>`;
+  <table><thead><tr><th>Item</th><th>Unit</th><th>Total Purchased</th><th>Used</th><th>Balance</th><th>Min Stock</th><th>Last Purchase</th><th>Status</th><th></th></tr></thead><tbody>`;
 
   if (!items.length) {
-    html += `<tr><td colspan="8" style="text-align:center;color:#888;padding:30px">Koi item nahi. "+ Add Item" se shuru karo</td></tr>`;
+    html += `<tr><td colspan="9" style="text-align:center;color:#888;padding:30px">Koi item nahi. "+ Add Item" se shuru karo</td></tr>`;
   } else {
     items.forEach(i => {
       const stock = parseFloat(i.current_stock);
@@ -1172,9 +1172,10 @@ async function loadInvItems() {
       html += `<tr>
         <td><b>${i.item_name}</b></td>
         <td style="color:#888">${i.unit}</td>
+        <td style="font-weight:700;color:#4fc3f7">${parseFloat(i.total_purchased||0)}</td>
+        <td style="font-weight:700;color:var(--red)">${parseFloat(i.total_used||0)}</td>
         <td style="font-weight:700;font-size:15px;color:${stock<=minS?'var(--red)':'var(--green)'}">${stock}</td>
         <td style="color:#888">${minS}</td>
-        <td style="color:var(--primary)">₹${parseFloat(i.cost_per_unit).toLocaleString('en-IN')}</td>
         <td style="color:#888;font-size:12px">${i.purchase_date ? fmtDate(i.purchase_date) : '—'}</td>
         <td>${status}</td>
         <td>

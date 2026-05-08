@@ -503,7 +503,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({r['key']: r['value'] for r in cur.fetchall()})
 
             elif path == '/api/admin/inventory':
-                cur.execute('SELECT * FROM inventory_items ORDER BY item_name')
+                cur.execute('''
+                    SELECT i.*,
+                        COALESCE(SUM(CASE WHEN l.log_type='add'  THEN l.quantity ELSE 0 END), 0) AS total_purchased,
+                        COALESCE(SUM(CASE WHEN l.log_type='use'  THEN l.quantity ELSE 0 END), 0) AS total_used
+                    FROM inventory_items i
+                    LEFT JOIN inventory_log l ON l.item_id = i.id
+                    GROUP BY i.id ORDER BY i.item_name
+                ''')
                 self.send_json([dict(r) for r in cur.fetchall()])
 
             elif path == '/api/admin/inventory/log':
