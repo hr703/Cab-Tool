@@ -129,6 +129,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT NOW()
         )
     ''')
+    cur.execute("ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS purchase_date TEXT DEFAULT ''")
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_driver_name TEXT DEFAULT ''")
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_driver_mobile TEXT DEFAULT ''")
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_vehicle_type TEXT DEFAULT ''")
@@ -607,18 +608,18 @@ class Handler(BaseHTTPRequestHandler):
 
         try:
             if path == '/api/admin/inventory/add':
-                cur.execute('''INSERT INTO inventory_items (item_name, unit, current_stock, min_stock, cost_per_unit)
-                    VALUES (%s,%s,%s,%s,%s) RETURNING id''',
+                cur.execute('''INSERT INTO inventory_items (item_name, unit, current_stock, min_stock, cost_per_unit, purchase_date)
+                    VALUES (%s,%s,%s,%s,%s,%s) RETURNING id''',
                     (body['item_name'], body.get('unit','pcs'), body.get('current_stock',0),
-                     body.get('min_stock',5), body.get('cost_per_unit',0)))
+                     body.get('min_stock',5), body.get('cost_per_unit',0), body.get('purchase_date','')))
                 new_id = cur.fetchone()['id']
                 conn.commit()
                 self.send_json({'success': True, 'id': new_id})
 
             elif path == '/api/admin/inventory/update':
-                cur.execute('''UPDATE inventory_items SET item_name=%s, unit=%s, current_stock=%s, min_stock=%s, cost_per_unit=%s WHERE id=%s''',
+                cur.execute('''UPDATE inventory_items SET item_name=%s, unit=%s, current_stock=%s, min_stock=%s, cost_per_unit=%s, purchase_date=%s WHERE id=%s''',
                     (body['item_name'], body.get('unit','pcs'), body.get('current_stock',0),
-                     body.get('min_stock',5), body.get('cost_per_unit',0), body['id']))
+                     body.get('min_stock',5), body.get('cost_per_unit',0), body.get('purchase_date',''), body['id']))
                 conn.commit()
                 self.send_json({'success': True})
 
