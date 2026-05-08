@@ -322,8 +322,20 @@ function shiftRosterDay(n) {
   renderAdminRoster();
 }
 
+function fillRouteDefaults(routeId) {
+  const route = routesCache.find(r => String(r.id) === String(routeId));
+  if (!route) return;
+  document.getElementById('m-dname').value  = route.default_driver_name   || '';
+  document.getElementById('m-dmobile').value = route.default_driver_mobile || '';
+  document.getElementById('m-vtype').value   = route.default_vehicle_type  || '';
+  document.getElementById('m-vnum').value    = route.default_vehicle_number|| '';
+  document.getElementById('m-gname').value   = route.default_guard_name    || '';
+  document.getElementById('m-gmobile').value = route.default_guard_mobile  || '';
+}
+
 function openAddRosterModal() {
   if (!employeesCache.length || !routesCache.length) { showToast('Add Employees and Routes first'); return; }
+  const firstRoute = routesCache[0];
   const routeOpts = routesCache.map(r => `<option value="${r.id}">${r.route_name}</option>`).join('');
   const dateOpts = getWeekDates(rosterWeekOffset).map(d => {
     const sel = (rosterDayMode && d === rosterSelectedDate) ? ' selected' : '';
@@ -348,25 +360,25 @@ function openAddRosterModal() {
       </div>
     </div>
     <div class="two-col">
-      <div class="form-row"><label>Route</label><select id="m-route">${routeOpts}</select></div>
+      <div class="form-row"><label>Route</label><select id="m-route" onchange="fillRouteDefaults(this.value)">${routeOpts}</select></div>
       <div class="form-row"><label>Shift Date</label><select id="m-date">${dateOpts}</select></div>
     </div>
     <div style="border-top:1px solid var(--border);margin:14px 0 12px;padding-top:12px">
       <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">🚗 Cab Details <span style="color:#aaa;font-weight:400">(optional)</span></div>
       <div class="two-col">
-        <div class="form-row"><label>Driver Name</label><input id="m-dname" placeholder="Driver ka naam"></div>
-        <div class="form-row"><label>Driver Mobile</label><input id="m-dmobile" placeholder="10-digit"></div>
+        <div class="form-row"><label>Driver Name</label><input id="m-dname" value="${firstRoute.default_driver_name||''}" placeholder="Driver ka naam"></div>
+        <div class="form-row"><label>Driver Mobile</label><input id="m-dmobile" value="${firstRoute.default_driver_mobile||''}" placeholder="10-digit"></div>
       </div>
       <div class="two-col">
-        <div class="form-row"><label>Vehicle Type</label><input id="m-vtype" placeholder="e.g. Swift Dzire"></div>
-        <div class="form-row"><label>Vehicle Number</label><input id="m-vnum" placeholder="e.g. HR 26 AX 1234"></div>
+        <div class="form-row"><label>Vehicle Type</label><input id="m-vtype" value="${firstRoute.default_vehicle_type||''}" placeholder="e.g. Swift Dzire"></div>
+        <div class="form-row"><label>Vehicle Number</label><input id="m-vnum" value="${firstRoute.default_vehicle_number||''}" placeholder="e.g. HR 26 AX 1234"></div>
       </div>
     </div>
     <div style="border-top:1px solid var(--border);margin-bottom:12px;padding-top:12px">
       <div style="font-size:12px;font-weight:700;color:#4fc3f7;margin-bottom:10px">🛡️ Security Guard <span style="color:#aaa;font-weight:400">(optional)</span></div>
       <div class="two-col">
-        <div class="form-row"><label>Guard Name</label><input id="m-gname" placeholder="Guard ka naam"></div>
-        <div class="form-row"><label>Guard Mobile</label><input id="m-gmobile" placeholder="10-digit"></div>
+        <div class="form-row"><label>Guard Name</label><input id="m-gname" value="${firstRoute.default_guard_name||''}" placeholder="Guard ka naam"></div>
+        <div class="form-row"><label>Guard Mobile</label><input id="m-gmobile" value="${firstRoute.default_guard_mobile||''}" placeholder="10-digit"></div>
       </div>
     </div>
     <div id="modal-err" class="err-msg"></div>
