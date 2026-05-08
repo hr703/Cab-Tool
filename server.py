@@ -629,6 +629,19 @@ class Handler(BaseHTTPRequestHandler):
                 conn.commit()
                 self.send_json({'success': True})
 
+            elif path == '/api/admin/inventory/log/delete':
+                log_id = body['id']
+                cur.execute('SELECT item_id, quantity, log_type FROM inventory_log WHERE id=%s', (log_id,))
+                log = cur.fetchone()
+                if log:
+                    if log['log_type'] == 'add':
+                        cur.execute('UPDATE inventory_items SET current_stock=GREATEST(0,current_stock-%s) WHERE id=%s', (log['quantity'], log['item_id']))
+                    else:
+                        cur.execute('UPDATE inventory_items SET current_stock=current_stock+%s WHERE id=%s', (log['quantity'], log['item_id']))
+                    cur.execute('DELETE FROM inventory_log WHERE id=%s', (log_id,))
+                    conn.commit()
+                self.send_json({'success': True})
+
             elif path == '/api/admin/inventory/log':
                 # Add stock in or use out
                 item_id = body['item_id']

@@ -1372,10 +1372,10 @@ async function loadInvPurchases() {
   }
 
   html += `<div class="card" style="padding:0;overflow:auto">
-  <table><thead><tr><th>Date of Purchase</th><th>Item</th><th>Total Unit</th><th>Cost per Unit</th><th>Total Cost</th></tr></thead><tbody>`;
+  <table><thead><tr><th>Date of Purchase</th><th>Item</th><th>Total Unit</th><th>Cost per Unit</th><th>Total Cost</th><th></th></tr></thead><tbody>`;
 
   if (!monthPurchases.length) {
-    html += `<tr><td colspan="5" style="text-align:center;color:#888;padding:24px">Is mahine koi purchase nahi.</td></tr>`;
+    html += `<tr><td colspan="6" style="text-align:center;color:#888;padding:24px">Is mahine koi purchase nahi.</td></tr>`;
   } else {
     monthPurchases.forEach(p => {
       const qty = parseFloat(p.quantity);
@@ -1387,6 +1387,7 @@ async function loadInvPurchases() {
         <td style="font-weight:700">${qty} ${p.unit}</td>
         <td>₹${cpu}</td>
         <td style="font-weight:700;color:var(--primary)">${total>0?'₹'+total.toLocaleString('en-IN'):'—'}</td>
+        <td><button class="action-btn danger" onclick="deletePurchaseLog(${p.id})">Delete</button></td>
       </tr>`;
     });
   }
@@ -1431,6 +1432,12 @@ async function submitNewPurchase() {
   const res = await apiPost('/api/admin/inventory/log', { item_id: itemId, quantity: qty, log_type: 'add', log_date: date, cost_per_unit: cost, note });
   if (res.success) { closeModal(); showToast('✓ Purchase saved! Stock updated.'); loadInvPurchases(); }
   else document.getElementById('modal-err').textContent = res.error || 'Error';
+}
+
+async function deletePurchaseLog(id) {
+  if (!confirm('Yeh purchase delete karo? Stock bhi reverse ho jayega.')) return;
+  const res = await apiPost('/api/admin/inventory/log/delete', { id });
+  if (res.success) { showToast('Purchase deleted, stock updated.'); loadInvPurchases(); }
 }
 
 // ── COST SUMMARY TAB ──────────────────────────────────────
