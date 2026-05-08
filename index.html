@@ -505,12 +505,11 @@ async function loadAttendance() {
       <td style="color:#888;font-size:12px">${e.department || ''}</td>
       <td>${scheduled ? '<span class="badge badge-green">✓ Scheduled</span>' : '<span class="badge badge-gray">—</span>'}</td>
       <td>
-        <label style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;cursor:pointer">
-          <input type="radio" name="att_${e.id}" value="P" ${att==='P'?'checked':''} style="accent-color:var(--green)"> <span style="color:var(--green);font-weight:600">Present</span>
-        </label>
-        <label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer">
-          <input type="radio" name="att_${e.id}" value="A" ${att==='A'?'checked':''} style="accent-color:var(--red)"> <span style="color:var(--red);font-weight:600">Absent</span>
-        </label>
+        <select name="att_${e.id}" style="padding:7px 12px;border:1px solid ${att==='P'?'var(--green)':att==='A'?'var(--red)':'var(--border)'};border-radius:6px;font-size:13px;font-weight:600;color:${att==='P'?'var(--green)':att==='A'?'var(--red)':'var(--text2)'};background:#fff;cursor:pointer" onchange="this.style.color=this.value==='P'?'var(--green)':this.value==='A'?'var(--red)':'var(--text2)';this.style.borderColor=this.value==='P'?'var(--green)':this.value==='A'?'var(--red)':'var(--border)'">
+          <option value="" ${att===''?'selected':''}>-- Select --</option>
+          <option value="P" ${att==='P'?'selected':''}>✅ Present</option>
+          <option value="A" ${att==='A'?'selected':''}>❌ Absent</option>
+        </select>
       </td>
     </tr>`;
   });
@@ -519,14 +518,21 @@ async function loadAttendance() {
 }
 
 function markAllAtt(status, date) {
-  document.querySelectorAll(`input[type=radio][value=${status}]`).forEach(r => r.checked = true);
+  employeesCache.forEach(e => {
+    const sel = document.querySelector(`select[name="att_${e.id}"]`);
+    if (sel) {
+      sel.value = status;
+      sel.style.color = status === 'P' ? 'var(--green)' : 'var(--red)';
+      sel.style.borderColor = status === 'P' ? 'var(--green)' : 'var(--red)';
+    }
+  });
 }
 
 async function saveAttendance(date) {
   const attData = {};
   employeesCache.forEach(e => {
-    const sel = document.querySelector(`input[name="att_${e.id}"]:checked`);
-    if (sel) attData[e.id] = sel.value;
+    const sel = document.querySelector(`select[name="att_${e.id}"]`);
+    if (sel && sel.value) attData[e.id] = sel.value;
   });
   const res = await apiPost('/api/admin/settings', { [`att_${date}`]: JSON.stringify(attData) });
   if (res.success) {
