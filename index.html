@@ -1159,10 +1159,10 @@ async function loadInvItems() {
   }
 
   html += `<div class="card" style="padding:0;overflow:auto">
-  <table><thead><tr><th>Item</th><th>Unit</th><th>Current Stock</th><th>Min Stock</th><th>Cost/Unit</th><th>Purchase Date</th><th>Status</th><th></th></tr></thead><tbody>`;
+  <table><thead><tr><th>Item</th><th>Unit</th><th>Current Stock</th><th>Min Stock</th><th>Cost/Unit</th><th>Status</th><th></th></tr></thead><tbody>`;
 
   if (!items.length) {
-    html += `<tr><td colspan="8" style="text-align:center;color:#888;padding:30px">Koi item nahi. "+ Add Item" se shuru karo</td></tr>`;
+    html += `<tr><td colspan="7" style="text-align:center;color:#888;padding:30px">Koi item nahi. "+ Add Item" se shuru karo</td></tr>`;
   } else {
     items.forEach(i => {
       const stock = parseFloat(i.current_stock);
@@ -1176,7 +1176,6 @@ async function loadInvItems() {
         <td style="font-weight:700;font-size:15px;color:${stock<=minS?'var(--red)':'var(--green)'}">${stock}</td>
         <td style="color:#888">${minS}</td>
         <td style="color:var(--primary)">₹${parseFloat(i.cost_per_unit).toLocaleString('en-IN')}</td>
-        <td style="color:#888;font-size:12px">${i.purchase_date ? fmtDate(i.purchase_date) : '—'}</td>
         <td>${status}</td>
         <td>
           <button class="action-btn" onclick='openInvModal(${JSON.stringify(i)})'>Edit</button>
@@ -1202,10 +1201,7 @@ function openInvModal(item) {
       <div class="form-row"><label>Current Stock</label><input id="inv-stock" type="number" value="${item.current_stock||0}"></div>
       <div class="form-row"><label>Min Stock (alert)</label><input id="inv-min" type="number" value="${item.min_stock||5}"></div>
     </div>
-    <div class="two-col">
-      <div class="form-row"><label>Cost per Unit (₹)</label><input id="inv-cost" type="number" value="${item.cost_per_unit||0}"></div>
-      <div class="form-row"><label>Date of Purchase</label><input id="inv-purchase-date-item" type="date" value="${item.purchase_date||new Date().toISOString().split('T')[0]}"></div>
-    </div>
+    <div class="form-row"><label>Cost per Unit (₹)</label><input id="inv-cost" type="number" value="${item.cost_per_unit||0}"></div>
     <div id="modal-err" class="err-msg"></div>
     <div class="modal-actions">
       <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
@@ -1214,7 +1210,7 @@ function openInvModal(item) {
 }
 
 async function submitInvItem(id) {
-  const data = { item_name: document.getElementById('inv-name').value.trim(), unit: document.getElementById('inv-unit').value.trim()||'pcs', current_stock: parseFloat(document.getElementById('inv-stock').value)||0, min_stock: parseFloat(document.getElementById('inv-min').value)||5, cost_per_unit: parseFloat(document.getElementById('inv-cost').value)||0, purchase_date: document.getElementById('inv-purchase-date-item').value||'' };
+  const data = { item_name: document.getElementById('inv-name').value.trim(), unit: document.getElementById('inv-unit').value.trim()||'pcs', current_stock: parseFloat(document.getElementById('inv-stock').value)||0, min_stock: parseFloat(document.getElementById('inv-min').value)||5, cost_per_unit: parseFloat(document.getElementById('inv-cost').value)||0, };
   if (!data.item_name) { document.getElementById('modal-err').textContent = 'Item name required'; return; }
   if (id) data.id = id;
   const res = await apiPost(id ? '/api/admin/inventory/update' : '/api/admin/inventory/add', data);
