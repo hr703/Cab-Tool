@@ -528,8 +528,23 @@ async function deleteRoute(id) {
 }
 
 // ── EMPLOYEES TAB ──
+let empSubTab = 'list';
+let snackRegDate = new Date().toISOString().split('T')[0];
+
 async function renderAdminEmployees() {
   await loadEmployees();
+  document.getElementById('tab-employees').innerHTML = `
+    <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border)">
+      <button class="tab-btn ${empSubTab==='list'?'active':''}" onclick="empSubTab='list';renderAdminEmployees()">Employees</button>
+      <button class="tab-btn ${empSubTab==='snack'?'active':''}" onclick="empSubTab='snack';renderAdminEmployees()">🍜 Snack Register</button>
+    </div>
+    <div id="emp-sub-content"></div>`;
+  if (empSubTab === 'list') renderEmpList();
+  else renderSnackRegister();
+}
+
+async function renderEmpList() {
+  const el = document.getElementById('emp-sub-content');
   let html = `
     <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
       <button class="btn-sm btn-sm-gold" onclick="openEmpModal()">+ Add Employee</button>
@@ -551,7 +566,84 @@ async function renderAdminEmployees() {
     });
   }
   html += `</tbody></table></div>`;
-  document.getElementById('tab-employees').innerHTML = html;
+  document.getElementById('emp-sub-content').innerHTML = html;
+}
+
+async function renderSnackRegister() {
+  const el = document.getElementById('emp-sub-content');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn-sm btn-sm-outline" onclick="shiftSnackDay(-1)">◀ Prev</button>
+      <input type="date" id="snack-date-picker" value="${snackRegDate}" onchange="snackRegDate=this.value;renderSnackRegister()" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;color:var(--text);background:#fff">
+      <button class="btn-sm btn-sm-outline" onclick="snackRegDate=new Date().toISOString().split('T')[0];renderSnackRegister()">Today</button>
+      <button class="btn-sm btn-sm-outline" onclick="shiftSnackDay(1)">Next ▶</button>
+    </div>
+    <div id="snack-reg-content"><div style="color:#888">Loading...</div></div>`;
+  loadSnackRegister();
+}
+
+function shiftSnackDay(n) {
+  const d = new Date(snackRegDate + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  snackRegDate = d.toISOString().split('T')[0];
+  const p = document.getElementById('snack-date-picker');
+  if (p) p.value = snackRegDate;
+  loadSnackRegister();
+}
+
+async function loadSnackRegister() {
+  const el = document.getElementById('snack-reg-content');
+  if (!el) return;
+  const settings = await fetch(`${API}/api/admin/settings`).then(r => r.json()).catch(() => ({}));
+  snackCostPerEmp = parseFloat(settings.snack_cost_per_emp || 0);
+  const savedMale = parseInt(settings[`snack_male_${snackRegDate}`] || 0);
+  const savedFemale = parseInt(settings[`snack_female_${snackRegDate}`] || employeesCache.length);
+  const dayLabel = new Date(snackRegDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  const totalSnack = (savedMale + savedFemale) * snackCostPerEmp;
+
+  el.innerHTML = `
+    <div style="font-size:16px;font-weight:700;color:var(--primary);margin-bottom:16px">${dayLabel}</div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text)">Snack Count Enter Karo</div>
+      <div class="two-col" style="margin-bottom:14px">
+        <div>
+          <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px">👩 Female Employees</label>
+          <input id="snack-female" type="number" value="${savedFemale}" min="0" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:15px" oninput="updateSnackTotal()">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:6px">👨 Male Employees</label>
+          <input id="snack-male" type="number" value="${savedMale}" min="0" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:15px" oninput="updateSnackTotal()">
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div style="font-size:14px;color:var(--text2)">
+          Total: <b id="snack-total-count" style="color:var(--primary);font-size:16px">${savedMale + savedFemale}</b> employees &nbsp;×&nbsp; ₹${snackCostPerEmp} &nbsp;=&nbsp;
+          <b id="snack-total-cost" style="color:var(--primary);font-size:16px">₹${totalSnack.toLocaleString('en-IN')}</b>
+        </div>
+        <button class="btn-sm btn-sm-gold" onclick="saveSnackRegister('${snackRegDate}')">💾 Save</button>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+      <table><thead><tr><th>Category</th><th>Count</th><th style="color:#F59E0B">Snack Cost</th></tr></thead><tbody>
+        <tr><td>👩 Female Employees</td><td style="text-align:center;font-weight:600">${savedFemale}</td><td style="color:#F59E0B;font-weight:600">₹${(savedFemale * snackCostPerEmp).toLocaleString('en-IN')}</td></tr>
+        <tr><td>👨 Male Employees</td><td style="text-align:center;font-weight:600">${savedMale}</td><td style="color:#F59E0B;font-weight:600">₹${(savedMale * snackCostPerEmp).toLocaleString('en-IN')}</td></tr>
+        <tr style="background:#FFF7F2"><td style="font-weight:700">Total</td><td style="text-align:center;font-weight:700;font-size:15px">${savedMale + savedFemale}</td><td style="color:#F59E0B;font-weight:700;font-size:15px">₹${totalSnack.toLocaleString('en-IN')}</td></tr>
+      </tbody></table>
+    </div>`;
+}
+
+function updateSnackTotal() {
+  const m = parseInt(document.getElementById('snack-male').value) || 0;
+  const f = parseInt(document.getElementById('snack-female').value) || 0;
+  document.getElementById('snack-total-count').textContent = m + f;
+  document.getElementById('snack-total-cost').textContent = '₹' + ((m + f) * snackCostPerEmp).toLocaleString('en-IN');
+}
+
+async function saveSnackRegister(date) {
+  const m = parseInt(document.getElementById('snack-male').value) || 0;
+  const f = parseInt(document.getElementById('snack-female').value) || 0;
+  const res = await apiPost('/api/admin/settings', { [`snack_male_${date}`]: m, [`snack_female_${date}`]: f, [`headcount_${date}`]: m + f });
+  if (res.success) { showToast(`✓ ${date} — Female: ${f}, Male: ${m}, Total: ${m+f} saved!`); loadSnackRegister(); }
 }
 
 function openEmpModal(e) {
