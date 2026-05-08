@@ -195,23 +195,15 @@ function renderView() {
 async function renderAdminView() {
   document.getElementById('main-content').innerHTML = `
     <div class="tabs">
-      <button class="tab-btn active" onclick="adminTab('roster',this)">Weekly Roster</button>
-      <button class="tab-btn" onclick="adminTab('costsummary',this)">Cost Summary</button>
-      <button class="tab-btn" onclick="adminTab('routes',this)">Routes</button>
+      <button class="tab-btn active" onclick="adminTab('costsummary',this)">Cost Summary</button>
       <button class="tab-btn" onclick="adminTab('employees',this)">Employees</button>
-      <button class="tab-btn" onclick="adminTab('vendors',this)">Vendors</button>
-      <button class="tab-btn" onclick="adminTab('daily',this)">Daily Plan</button>
       <button class="tab-btn" onclick="adminTab('inventory',this)">🍜 Inventory</button>
     </div>
-    <div id="tab-roster" class="tab-content active"></div>
-    <div id="tab-routes" class="tab-content"></div>
+    <div id="tab-costsummary" class="tab-content active"></div>
     <div id="tab-employees" class="tab-content"></div>
-    <div id="tab-vendors" class="tab-content"></div>
-    <div id="tab-daily" class="tab-content"></div>
-    <div id="tab-inventory" class="tab-content"></div>
-    <div id="tab-costsummary" class="tab-content"></div>`;
+    <div id="tab-inventory" class="tab-content"></div>`;
   await Promise.all([loadRoutes(), loadEmployees(), loadVendors()]);
-  renderAdminRoster();
+  renderCostSummary();
 }
 
 function adminTab(name, btn) {
@@ -219,11 +211,7 @@ function adminTab(name, btn) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'roster') renderAdminRoster();
-  else if (name === 'routes') renderAdminRoutes();
-  else if (name === 'employees') renderAdminEmployees();
-  else if (name === 'vendors') renderAdminVendors();
-  else if (name === 'daily') { renderDailyPlan(); }
+  if (name === 'employees') renderAdminEmployees();
   else if (name === 'inventory') { renderInventory(); }
   else if (name === 'costsummary') { renderCostSummary(); }
 }
@@ -323,7 +311,8 @@ async function renderAdminRoster() {
     });
   }
   html += `</tbody></table></div>`;
-  document.getElementById('tab-roster').innerHTML = html;
+  const rosterTarget = document.getElementById('emp-sub-content') || document.getElementById('tab-roster');
+  if (rosterTarget) rosterTarget.innerHTML = html;
 }
 
 function shiftRosterDay(n) {
@@ -583,7 +572,7 @@ async function renderAdminRoutes() {
     });
   }
   html += `</tbody></table></div>`;
-  document.getElementById('tab-routes').innerHTML = html;
+  document.getElementById('emp-sub-content').innerHTML = html;
 }
 
 function openRouteModal(r) {
@@ -655,11 +644,19 @@ async function renderAdminEmployees() {
   document.getElementById('tab-employees').innerHTML = `
     <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border)">
       <button class="tab-btn ${empSubTab==='list'?'active':''}" onclick="empSubTab='list';renderAdminEmployees()">Employees</button>
+      <button class="tab-btn ${empSubTab==='roster'?'active':''}" onclick="empSubTab='roster';renderAdminEmployees()">Weekly Roster</button>
+      <button class="tab-btn ${empSubTab==='routes'?'active':''}" onclick="empSubTab='routes';renderAdminEmployees()">Routes</button>
+      <button class="tab-btn ${empSubTab==='daily'?'active':''}" onclick="empSubTab='daily';renderAdminEmployees()">Daily Plan</button>
+      <button class="tab-btn ${empSubTab==='vendors'?'active':''}" onclick="empSubTab='vendors';renderAdminEmployees()">Vendors</button>
       <button class="tab-btn ${empSubTab==='snack'?'active':''}" onclick="empSubTab='snack';renderAdminEmployees()">🍜 Snack Register</button>
       <button class="tab-btn ${empSubTab==='attendance'?'active':''}" onclick="empSubTab='attendance';renderAdminEmployees()">✅ Attendance</button>
     </div>
     <div id="emp-sub-content"></div>`;
   if (empSubTab === 'list') renderEmpList();
+  else if (empSubTab === 'roster') renderAdminRoster();
+  else if (empSubTab === 'routes') renderAdminRoutes();
+  else if (empSubTab === 'daily') renderDailyPlan();
+  else if (empSubTab === 'vendors') renderAdminVendors();
   else if (empSubTab === 'snack') renderSnackRegister();
   else renderAttendance();
 }
@@ -1810,7 +1807,7 @@ async function loadCostSummary_data() {
 let dailyDate = new Date().toISOString().split('T')[0];
 
 async function renderDailyPlan() {
-  const el = document.getElementById('tab-daily');
+  const el = document.getElementById('emp-sub-content');
   el.innerHTML = `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
       <button class="btn-sm btn-sm-outline" onclick="shiftDay(-1)">◀ Prev</button>
