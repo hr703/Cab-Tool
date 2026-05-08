@@ -279,12 +279,14 @@ async function renderAdminRoster() {
     html += `<tr><td colspan="9" style="text-align:center;color:#555;padding:30px">No entries this week. Click "+ Add to Roster"</td></tr>`;
   } else {
     roster.forEach(r => {
+      const sameRouteCnt = roster.filter(x => x.route_id === r.route_id && String(x.shift_date).substring(0,10) === String(r.shift_date).substring(0,10)).length;
+      const routeNote = sameRouteCnt > 1 ? `<br><small style="color:#aaa">(${sameRouteCnt} emp ko apply)</small>` : '';
       const cab = r.driver_name
         ? `<span class="assigned">✓ ${r.driver_name}<br><small style="color:#888">${r.vehicle_type} ${r.vehicle_number}</small></span><br><button class="action-btn" style="margin-top:4px;font-size:11px" onclick="adminAssignCab(${r.id},'${r.emp_name}','${r.shift_date}')">Edit</button>`
-        : `<button class="btn-sm btn-sm-gold" style="font-size:11px;padding:4px 10px" onclick="adminAssignCab(${r.id},'${r.emp_name}','${r.shift_date}')">+ Assign Cab</button>`;
+        : `<button class="btn-sm btn-sm-gold" style="font-size:11px;padding:4px 10px" onclick="adminAssignCab(${r.id},'${r.emp_name}','${r.shift_date}')">+ Assign Cab</button>${routeNote}`;
       const guard = r.guard_name
         ? `<span class="assigned">✓ ${r.guard_name}<br><small style="color:#888">${r.guard_mobile || ''}</small></span><br><button class="action-btn" style="margin-top:4px;font-size:11px" onclick="adminAssignGuard(${r.id},'${r.emp_name}','${r.shift_date}')">Edit</button>`
-        : `<button class="btn-sm btn-sm-outline" style="font-size:11px;padding:4px 10px;color:#4fc3f7;border-color:#4fc3f7" onclick="adminAssignGuard(${r.id},'${r.emp_name}','${r.shift_date}')">+ Assign Guard</button>`;
+        : `<button class="btn-sm btn-sm-outline" style="font-size:11px;padding:4px 10px;color:#4fc3f7;border-color:#4fc3f7" onclick="adminAssignGuard(${r.id},'${r.emp_name}','${r.shift_date}')">+ Assign Guard</button>${routeNote}`;
       html += `<tr>
         <td><b>${fmtDate(r.shift_date)}</b></td>
         <td><b>${r.emp_name}</b><br><small style="color:#666">${r.mobile || ''}</small></td>

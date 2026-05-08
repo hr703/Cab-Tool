@@ -651,41 +651,60 @@ class Handler(BaseHTTPRequestHandler):
             elif path == '/api/cab/assign':
                 vendor_id = body.get('vendor_id')
                 roster_id = body.get('roster_id')
-                cur.execute('''
-                    INSERT INTO cab_assignments (roster_id, vendor_id, driver_name, driver_mobile, vehicle_type, vehicle_number)
-                    VALUES (%s,%s,%s,%s,%s,%s)
-                    ON CONFLICT (roster_id) DO UPDATE SET
-                        vendor_id=%s, driver_name=%s, driver_mobile=%s,
-                        vehicle_type=%s, vehicle_number=%s, assigned_at=NOW()
-                ''', (
-                    roster_id, vendor_id,
-                    body.get('driver_name',''), body.get('driver_mobile',''),
-                    body.get('vehicle_type',''), body.get('vehicle_number',''),
-                    vendor_id,
-                    body.get('driver_name',''), body.get('driver_mobile',''),
-                    body.get('vehicle_type',''), body.get('vehicle_number','')
-                ))
+                # Find route_id + shift_date for this roster entry
+                cur.execute('SELECT route_id, shift_date FROM roster WHERE id=%s', (roster_id,))
+                rrow = cur.fetchone()
+                if rrow:
+                    # Get all roster IDs on same route + date
+                    cur.execute('SELECT id FROM roster WHERE route_id=%s AND shift_date=%s', (rrow['route_id'], rrow['shift_date']))
+                    all_ids = [r['id'] for r in cur.fetchall()]
+                else:
+                    all_ids = [roster_id]
+                for rid in all_ids:
+                    cur.execute('''
+                        INSERT INTO cab_assignments (roster_id, vendor_id, driver_name, driver_mobile, vehicle_type, vehicle_number)
+                        VALUES (%s,%s,%s,%s,%s,%s)
+                        ON CONFLICT (roster_id) DO UPDATE SET
+                            vendor_id=%s, driver_name=%s, driver_mobile=%s,
+                            vehicle_type=%s, vehicle_number=%s, assigned_at=NOW()
+                    ''', (
+                        rid, vendor_id,
+                        body.get('driver_name',''), body.get('driver_mobile',''),
+                        body.get('vehicle_type',''), body.get('vehicle_number',''),
+                        vendor_id,
+                        body.get('driver_name',''), body.get('driver_mobile',''),
+                        body.get('vehicle_type',''), body.get('vehicle_number','')
+                    ))
                 conn.commit()
                 notify_assignment(roster_id, conn)
-                self.send_json({'success': True})
+                self.send_json({'success': True, 'applied_to': len(all_ids)})
 
             elif path == '/api/security/assign':
                 vendor_id = body.get('vendor_id')
                 roster_id = body.get('roster_id')
-                cur.execute('''
-                    INSERT INTO security_assignments (roster_id, vendor_id, guard_name, guard_mobile)
-                    VALUES (%s,%s,%s,%s)
-                    ON CONFLICT (roster_id) DO UPDATE SET
-                        vendor_id=%s, guard_name=%s, guard_mobile=%s, assigned_at=NOW()
-                ''', (
-                    roster_id, vendor_id,
-                    body.get('guard_name',''), body.get('guard_mobile',''),
-                    vendor_id,
-                    body.get('guard_name',''), body.get('guard_mobile','')
-                ))
+                # Find route_id + shift_date for this roster entry
+                cur.execute('SELECT route_id, shift_date FROM roster WHERE id=%s', (roster_id,))
+                rrow = cur.fetchone()
+                if rrow:
+                    cur.execute('SELECT id FROM roster WHERE route_id=%s AND shift_date=%s', (rrow['route_id'], rrow['shift_date']))
+                    all_ids = [r['id'] for r in cur.fetchall()]
+                else:
+                    all_ids = [roster_id]
+                for rid in all_ids:
+                    cur.execute('''
+                        INSERT INTO security_assignments (roster_id, vendor_id, guard_name, guard_mobile)
+                        VALUES (%s,%s,%s,%s)
+                        ON CONFLICT (roster_id) DO UPDATE SET
+                            vendor_id=%s, guard_name=%s, guard_mobile=%s, assigned_at=NOW()
+                    ''', (
+                        rid, vendor_id,
+                        body.get('guard_name',''), body.get('guard_mobile',''),
+                        vendor_id,
+                        body.get('guard_name',''), body.get('guard_mobile','')
+                    ))
                 conn.commit()
                 notify_assignment(roster_id, conn)
-                self.send_json({'success': True})
+                self.send_json({'success': True, 'applied_to': len(all_ids)})
 
             else:
                 self.send_json({'error': 'Not found'}, 404)
