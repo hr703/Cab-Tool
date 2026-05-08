@@ -304,6 +304,7 @@ async function renderAdminRoster() {
 
 function openAddRosterModal() {
   if (!employeesCache.length || !routesCache.length) { showToast('Add Employees and Routes first'); return; }
+  const empData = JSON.stringify(employeesCache.reduce((m, e) => { m[e.id] = e.pickup_address || ''; return m; }, {})).replace(/'/g, '&#39;');
   const empOpts = employeesCache.map(e => `<option value="${e.id}">${e.emp_name} (${e.department || ''})</option>`).join('');
   const routeOpts = routesCache.map(r => `<option value="${r.id}">${r.route_name}</option>`).join('');
   const dateOpts = getWeekDates(rosterWeekOffset).map(d => {
@@ -311,7 +312,11 @@ function openAddRosterModal() {
   }).join('');
   showModal(`
     <h3>Add to Roster</h3>
-    <div class="form-row"><label>Employee</label><select id="m-emp">${empOpts}</select></div>
+    <div class="form-row"><label>Employee</label><select id="m-emp" onchange="updatePickupAddr(${empData})">${empOpts}</select></div>
+    <div id="pickup-addr-box" style="background:#FFF7F2;border:1px solid #FFD4B3;border-radius:6px;padding:8px 12px;font-size:13px;margin-bottom:12px;color:#555">
+      <span style="font-size:11px;color:#888;display:block;margin-bottom:2px">📍 Pickup Address</span>
+      <span id="pickup-addr-text" style="color:#2D2D2D;font-weight:500">${employeesCache[0]?.pickup_address || '—'}</span>
+    </div>
     <div class="form-row"><label>Route</label><select id="m-route">${routeOpts}</select></div>
     <div class="form-row"><label>Shift Date</label><select id="m-date">${dateOpts}</select></div>
     <div id="modal-err" class="err-msg"></div>
@@ -319,6 +324,11 @@ function openAddRosterModal() {
       <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
       <button class="btn-sm btn-sm-gold" onclick="submitAddRoster()">Add</button>
     </div>`);
+}
+
+function updatePickupAddr(addrMap) {
+  const id = document.getElementById('m-emp').value;
+  document.getElementById('pickup-addr-text').textContent = addrMap[id] || '—';
 }
 
 async function submitAddRoster() {
