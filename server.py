@@ -650,8 +650,39 @@ class Handler(BaseHTTPRequestHandler):
                         cur.execute('''
                             INSERT INTO roster (employee_id, route_id, shift_date)
                             VALUES (%s,%s,%s) ON CONFLICT (employee_id, shift_date) DO NOTHING
+                            RETURNING id
                         ''', (entry['employee_id'], entry['route_id'], entry['shift_date']))
-                        added += 1
+                        row = cur.fetchone()
+                        if row:
+                            new_roster_id = row['id']
+                            added += 1
+                            # Auto-copy existing cab assignment for same route+date
+                            cur.execute('''
+                                SELECT ca.* FROM cab_assignments ca
+                                JOIN roster r ON ca.roster_id = r.id
+                                WHERE r.route_id=%s AND r.shift_date=%s
+                                LIMIT 1
+                            ''', (entry['route_id'], entry['shift_date']))
+                            existing_cab = cur.fetchone()
+                            if existing_cab:
+                                cur.execute('''
+                                    INSERT INTO cab_assignments (roster_id, vendor_id, driver_name, driver_mobile, vehicle_type, vehicle_number)
+                                    VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (roster_id) DO NOTHING
+                                ''', (new_roster_id, existing_cab['vendor_id'], existing_cab['driver_name'],
+                                      existing_cab['driver_mobile'], existing_cab['vehicle_type'], existing_cab['vehicle_number']))
+                            # Auto-copy existing guard assignment for same route+date
+                            cur.execute('''
+                                SELECT sa.* FROM security_assignments sa
+                                JOIN roster r ON sa.roster_id = r.id
+                                WHERE r.route_id=%s AND r.shift_date=%s
+                                LIMIT 1
+                            ''', (entry['route_id'], entry['shift_date']))
+                            existing_guard = cur.fetchone()
+                            if existing_guard:
+                                cur.execute('''
+                                    INSERT INTO security_assignments (roster_id, vendor_id, guard_name, guard_mobile)
+                                    VALUES (%s,%s,%s,%s) ON CONFLICT (roster_id) DO NOTHING
+                                ''', (new_roster_id, existing_guard['vendor_id'], existing_guard['guard_name'], existing_guard['guard_mobile']))
                     except Exception:
                         pass
                 conn.commit()
