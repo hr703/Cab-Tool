@@ -100,6 +100,13 @@ def init_db():
     ''')
     # Migrations
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS guard_cost NUMERIC DEFAULT 0")
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    ''')
+    cur.execute("INSERT INTO settings (key, value) VALUES ('snack_cost_per_emp', '0') ON CONFLICT (key) DO NOTHING")
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_driver_name TEXT DEFAULT ''")
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_driver_mobile TEXT DEFAULT ''")
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_vehicle_type TEXT DEFAULT ''")
@@ -467,7 +474,11 @@ class Handler(BaseHTTPRequestHandler):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         try:
-            if path == '/api/admin/routes':
+            if path == '/api/admin/settings':
+                cur.execute('SELECT key, value FROM settings')
+                self.send_json({r['key']: r['value'] for r in cur.fetchall()})
+
+            elif path == '/api/admin/routes':
                 cur.execute('SELECT * FROM routes ORDER BY route_name')
                 self.send_json([dict(r) for r in cur.fetchall()])
 
@@ -557,7 +568,13 @@ class Handler(BaseHTTPRequestHandler):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         try:
-            if path == '/api/auth/vendor':
+            if path == '/api/admin/settings':
+                for key, value in body.items():
+                    cur.execute("INSERT INTO settings (key,value) VALUES (%s,%s) ON CONFLICT (key) DO UPDATE SET value=%s", (key, str(value), str(value)))
+                conn.commit()
+                self.send_json({'success': True})
+
+            elif path == '/api/auth/vendor':
                 name = body.get('name', '').strip()
                 pw = body.get('password', '')
                 ph = hash_pw(pw)

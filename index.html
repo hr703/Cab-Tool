@@ -906,20 +906,40 @@ async function adminSubmitGuard(rosterId) {
 
 // ── COST SUMMARY TAB ──────────────────────────────────────
 let summaryMonth = new Date().toISOString().substring(0, 7);
-let summarySubTab = 'monthly';
+let summarySubTab = 'daily';
 let summaryDailyDate = new Date().toISOString().split('T')[0];
+let snackCostPerEmp = 0;
 
 async function renderCostSummary() {
   const el = document.getElementById('tab-costsummary');
+  // Load snack cost setting
+  const settings = await fetch(`${API}/api/admin/settings`).then(r => r.json()).catch(() => ({}));
+  snackCostPerEmp = parseFloat(settings.snack_cost_per_emp || 0);
+
   el.innerHTML = `
+    <div style="background:#FFF7F2;border:1px solid #FFD4B3;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-weight:600;font-size:13px">🍜 Snack Cost per Employee:</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:13px;color:#888">₹</span>
+        <input id="snack-cost-input" type="number" value="${snackCostPerEmp}" min="0" style="width:100px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px">
+        <button class="btn-sm btn-sm-gold" style="font-size:12px" onclick="saveSnackCost()">Save</button>
+      </div>
+      <span style="font-size:12px;color:#888">Yeh amount har employee ko har raat milta hai</span>
+    </div>
     <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border)">
-      <button class="tab-btn ${summarySubTab==='monthly'?'active':''}" onclick="summarySubTab='monthly';renderCostSummary()">Monthly Summary</button>
       <button class="tab-btn ${summarySubTab==='daily'?'active':''}" onclick="summarySubTab='daily';renderCostSummary()">Daily Cost Summary</button>
+      <button class="tab-btn ${summarySubTab==='monthly'?'active':''}" onclick="summarySubTab='monthly';renderCostSummary()">Monthly Summary</button>
     </div>
     <div id="summary-content"><div style="color:#888;padding:20px">Loading...</div></div>`;
 
-  if (summarySubTab === 'monthly') loadMonthlySummary();
-  else loadDailyCostSummary();
+  if (summarySubTab === 'daily') loadDailyCostSummary();
+  else loadMonthlySummary();
+}
+
+async function saveSnackCost() {
+  const val = parseFloat(document.getElementById('snack-cost-input').value) || 0;
+  const res = await apiPost('/api/admin/settings', { snack_cost_per_emp: val });
+  if (res.success) { snackCostPerEmp = val; showToast(`✓ Snack cost ₹${val}/employee saved!`); renderCostSummary(); }
 }
 
 async function loadMonthlySummary() {
@@ -995,36 +1015,45 @@ async function loadDailyCostData() {
   const totalCab = Object.values(byRoute).reduce((s, r) => s + r.cabCost, 0);
   const totalGuard = Object.values(byRoute).reduce((s, r) => s + r.guardCost, 0);
 
+  const totalSnack = roster.length * snackCostPerEmp;
+  const grandDay = totalCab + totalGuard + totalSnack;
+
   let html = `
     <div style="font-size:16px;font-weight:700;color:var(--primary);margin-bottom:16px">${dayLabel}</div>
     <div class="kpi-row" style="margin-bottom:20px">
       <div class="kpi"><div class="kpi-label">Employees</div><div class="kpi-val">${roster.length}</div></div>
-      <div class="kpi"><div class="kpi-label">Cab Cost</div><div class="kpi-val" style="color:var(--primary)">₹${totalCab.toLocaleString('en-IN')}</div></div>
-      <div class="kpi"><div class="kpi-label">Guard Cost</div><div class="kpi-val" style="color:#4fc3f7">₹${totalGuard.toLocaleString('en-IN')}</div></div>
-      <div class="kpi"><div class="kpi-label">Day Total</div><div class="kpi-val">₹${(totalCab+totalGuard).toLocaleString('en-IN')}</div></div>
+      <div class="kpi"><div class="kpi-label">🚗 Cab Cost</div><div class="kpi-val" style="color:var(--primary)">₹${totalCab.toLocaleString('en-IN')}</div></div>
+      <div class="kpi"><div class="kpi-label">🛡️ Guard Cost</div><div class="kpi-val" style="color:#4fc3f7">₹${totalGuard.toLocaleString('en-IN')}</div></div>
+      <div class="kpi"><div class="kpi-label">🍜 Snack Cost</div><div class="kpi-val" style="color:#F59E0B">₹${totalSnack.toLocaleString('en-IN')}</div></div>
+      <div class="kpi"><div class="kpi-label">Day Total</div><div class="kpi-val">₹${grandDay.toLocaleString('en-IN')}</div></div>
     </div>
     <div class="card" style="padding:0;overflow:auto">
     <table><thead><tr>
       <th>Route</th><th>Employees</th>
-      <th style="color:var(--primary)">Cab Cost</th>
-      <th style="color:#4fc3f7">Guard Cost</th>
+      <th style="color:var(--primary)">🚗 Cab</th>
+      <th style="color:#4fc3f7">🛡️ Guard</th>
+      <th style="color:#F59E0B">🍜 Snack</th>
       <th>Total</th>
     </tr></thead><tbody>`;
 
   Object.entries(byRoute).sort().forEach(([name, d]) => {
+    const snack = d.empCount * snackCostPerEmp;
     html += `<tr>
       <td><b>${name}</b></td>
       <td style="text-align:center">${d.empCount}</td>
       <td style="color:var(--primary);font-weight:600">₹${d.cabCost.toLocaleString('en-IN')}</td>
       <td style="color:#4fc3f7;font-weight:600">₹${d.guardCost.toLocaleString('en-IN')}</td>
-      <td style="font-weight:700">₹${(d.cabCost+d.guardCost).toLocaleString('en-IN')}</td>
+      <td style="color:#F59E0B;font-weight:600">₹${snack.toLocaleString('en-IN')}</td>
+      <td style="font-weight:700">₹${(d.cabCost+d.guardCost+snack).toLocaleString('en-IN')}</td>
     </tr>`;
   });
   html += `<tr style="background:#FFF7F2">
-    <td style="font-weight:700">Total</td><td style="text-align:center;font-weight:700">${roster.length}</td>
+    <td style="font-weight:700">Total</td>
+    <td style="text-align:center;font-weight:700">${roster.length}</td>
     <td style="color:var(--primary);font-weight:700;font-size:15px">₹${totalCab.toLocaleString('en-IN')}</td>
     <td style="color:#4fc3f7;font-weight:700;font-size:15px">₹${totalGuard.toLocaleString('en-IN')}</td>
-    <td style="font-weight:700;font-size:15px">₹${(totalCab+totalGuard).toLocaleString('en-IN')}</td>
+    <td style="color:#F59E0B;font-weight:700;font-size:15px">₹${totalSnack.toLocaleString('en-IN')}</td>
+    <td style="font-weight:700;font-size:15px">₹${grandDay.toLocaleString('en-IN')}</td>
   </tr></tbody></table></div>`;
   el.innerHTML = html;
 }
@@ -1083,7 +1112,8 @@ async function loadCostSummary_data() {
   const totalTrips = Object.keys(tripSeen).length;
   const totalCab   = Object.values(byRoute).reduce((s, r) => s + r.cabCost, 0);
   const totalGuard = Object.values(byRoute).reduce((s, r) => s + r.guardCost, 0);
-  const grandTotal = totalCab + totalGuard;
+  const totalSnack = totalEmp * snackCostPerEmp;
+  const grandTotal = totalCab + totalGuard + totalSnack;
 
   const [yr, mo] = summaryMonth.split('-');
   const mLabel = new Date(yr, mo - 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
@@ -1093,8 +1123,9 @@ async function loadCostSummary_data() {
     <div class="kpi-row" style="margin-bottom:24px">
       <div class="kpi"><div class="kpi-label">Total Employees</div><div class="kpi-val">${totalEmp}</div></div>
       <div class="kpi"><div class="kpi-label">Total Trips</div><div class="kpi-val">${totalTrips}</div></div>
-      <div class="kpi"><div class="kpi-label">Cab Cost</div><div class="kpi-val" style="color:var(--primary)">₹${totalCab.toLocaleString('en-IN')}</div></div>
-      <div class="kpi"><div class="kpi-label">Guard Cost</div><div class="kpi-val" style="color:#4fc3f7">₹${totalGuard.toLocaleString('en-IN')}</div></div>
+      <div class="kpi"><div class="kpi-label">🚗 Cab Cost</div><div class="kpi-val" style="color:var(--primary)">₹${totalCab.toLocaleString('en-IN')}</div></div>
+      <div class="kpi"><div class="kpi-label">🛡️ Guard Cost</div><div class="kpi-val" style="color:#4fc3f7">₹${totalGuard.toLocaleString('en-IN')}</div></div>
+      <div class="kpi"><div class="kpi-label">🍜 Snack Cost</div><div class="kpi-val" style="color:#F59E0B">₹${totalSnack.toLocaleString('en-IN')}</div></div>
       <div class="kpi"><div class="kpi-label">Grand Total</div><div class="kpi-val">₹${grandTotal.toLocaleString('en-IN')}</div></div>
     </div>
 
