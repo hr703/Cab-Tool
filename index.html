@@ -1267,7 +1267,7 @@ async function loadInvUse() {
 
   let html = `
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap">
-      <div style="font-size:14px;font-weight:600">Use Record Karo</div>
+      <div style="font-size:14px;font-weight:600">Daily Use Record</div>
       <input type="date" value="${invUseDate}" onchange="invUseDate=this.value;loadInvUse()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:13px">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:13px">
         👥 Roster: <b style="color:var(--primary)">${empCount}</b>
