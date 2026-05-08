@@ -200,6 +200,7 @@ async function renderAdminView() {
       <button class="tab-btn" onclick="adminTab('employees',this)">Employees</button>
       <button class="tab-btn" onclick="adminTab('vendors',this)">Vendors</button>
       <button class="tab-btn" onclick="adminTab('daily',this)">Daily Plan</button>
+      <button class="tab-btn" onclick="adminTab('inventory',this)">🍜 Inventory</button>
       <button class="tab-btn" onclick="adminTab('costsummary',this)">Cost Summary</button>
       <button class="tab-btn" onclick="adminTab('cost',this)">Cost Report</button>
       <button class="tab-btn" onclick="adminTab('costsplit',this)">Cost Split</button>
@@ -209,6 +210,7 @@ async function renderAdminView() {
     <div id="tab-employees" class="tab-content"></div>
     <div id="tab-vendors" class="tab-content"></div>
     <div id="tab-daily" class="tab-content"></div>
+    <div id="tab-inventory" class="tab-content"></div>
     <div id="tab-costsummary" class="tab-content"></div>
     <div id="tab-cost" class="tab-content"></div>
     <div id="tab-costsplit" class="tab-content"></div>`;
@@ -226,6 +228,7 @@ function adminTab(name, btn) {
   else if (name === 'employees') renderAdminEmployees();
   else if (name === 'vendors') renderAdminVendors();
   else if (name === 'daily') { renderDailyPlan(); }
+  else if (name === 'inventory') { renderInventory(); }
   else if (name === 'costsummary') { renderCostSummary(); }
   else if (name === 'cost') { costViewAll = true; renderAdminCost(); }
   else if (name === 'costsplit') { costViewAll = true; renderAdminCostSplit(); }
@@ -1118,6 +1121,196 @@ async function adminSubmitGuard(rosterId) {
   const res = await apiPost('/api/security/assign', data);
   if (res.success) { closeModal(); showToast('Guard assigned!'); renderAdminRoster(); }
   else document.getElementById('modal-err').textContent = res.error || 'Error';
+}
+
+// ── INVENTORY TAB ─────────────────────────────────────────
+let invSubTab = 'items';
+let invLogDate = new Date().toISOString().split('T')[0];
+
+async function renderInventory() {
+  const el = document.getElementById('tab-inventory');
+  el.innerHTML = `
+    <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border)">
+      <button class="tab-btn ${invSubTab==='items'?'active':''}" onclick="invSubTab='items';renderInventory()">📦 Stock Items</button>
+      <button class="tab-btn ${invSubTab==='use'?'active':''}" onclick="invSubTab='use';renderInventory()">➖ Daily Use</button>
+      <button class="tab-btn ${invSubTab==='log'?'active':''}" onclick="invSubTab='log';renderInventory()">📋 Log</button>
+    </div>
+    <div id="inv-content"><div style="color:#888">Loading...</div></div>`;
+  if (invSubTab === 'items') loadInvItems();
+  else if (invSubTab === 'use') loadInvUse();
+  else loadInvLog();
+}
+
+async function loadInvItems() {
+  const items = await fetch(`${API}/api/admin/inventory`).then(r => r.json()).catch(() => []);
+  const el = document.getElementById('inv-content');
+  const lowStock = items.filter(i => parseFloat(i.current_stock) <= parseFloat(i.min_stock));
+
+  let html = `<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <button class="btn-sm btn-sm-gold" onclick="openInvModal()">+ Add Item</button>
+  </div>`;
+
+  if (lowStock.length) {
+    html += `<div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px">
+      ⚠️ <b>Low Stock Alert:</b> ${lowStock.map(i => `${i.item_name} (${i.current_stock} ${i.unit})`).join(', ')}
+    </div>`;
+  }
+
+  html += `<div class="card" style="padding:0;overflow:auto">
+  <table><thead><tr><th>Item</th><th>Unit</th><th>Current Stock</th><th>Min Stock</th><th>Cost/Unit</th><th>Status</th><th></th></tr></thead><tbody>`;
+
+  if (!items.length) {
+    html += `<tr><td colspan="7" style="text-align:center;color:#888;padding:30px">Koi item nahi. "+ Add Item" se shuru karo</td></tr>`;
+  } else {
+    items.forEach(i => {
+      const stock = parseFloat(i.current_stock);
+      const minS  = parseFloat(i.min_stock);
+      const status = stock <= 0 ? `<span class="badge badge-red">Out of Stock</span>`
+        : stock <= minS ? `<span class="badge badge-yellow">⚠️ Low</span>`
+        : `<span class="badge badge-green">✓ OK</span>`;
+      html += `<tr>
+        <td><b>${i.item_name}</b></td>
+        <td style="color:#888">${i.unit}</td>
+        <td style="font-weight:700;font-size:15px;color:${stock<=minS?'var(--red)':'var(--green)'}">${stock}</td>
+        <td style="color:#888">${minS}</td>
+        <td style="color:var(--primary)">₹${parseFloat(i.cost_per_unit).toLocaleString('en-IN')}</td>
+        <td>${status}</td>
+        <td>
+          <button class="action-btn" onclick='openInvModal(${JSON.stringify(i)})'>Edit</button>
+          <button class="action-btn" style="color:#4fc3f7;border-color:#4fc3f7" onclick="openAddStockModal(${i.id},'${i.item_name}','${i.unit}')">+ Add Stock</button>
+          <button class="action-btn danger" onclick="deleteInvItem(${i.id})">Delete</button>
+        </td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  el.innerHTML = html;
+}
+
+function openInvModal(item) {
+  if (!item) item = {};
+  showModal(`
+    <h3>${item.id ? 'Edit Item' : 'Add Item'}</h3>
+    <div class="two-col">
+      <div class="form-row"><label>Item Name *</label><input id="inv-name" value="${item.item_name||''}"></div>
+      <div class="form-row"><label>Unit</label><input id="inv-unit" value="${item.unit||'pcs'}" placeholder="pcs / kg / box"></div>
+    </div>
+    <div class="two-col">
+      <div class="form-row"><label>Current Stock</label><input id="inv-stock" type="number" value="${item.current_stock||0}"></div>
+      <div class="form-row"><label>Min Stock (alert)</label><input id="inv-min" type="number" value="${item.min_stock||5}"></div>
+    </div>
+    <div class="form-row"><label>Cost per Unit (₹)</label><input id="inv-cost" type="number" value="${item.cost_per_unit||0}"></div>
+    <div id="modal-err" class="err-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm btn-sm-gold" onclick="submitInvItem(${item.id||0})">Save</button>
+    </div>`);
+}
+
+async function submitInvItem(id) {
+  const data = { item_name: document.getElementById('inv-name').value.trim(), unit: document.getElementById('inv-unit').value.trim()||'pcs', current_stock: parseFloat(document.getElementById('inv-stock').value)||0, min_stock: parseFloat(document.getElementById('inv-min').value)||5, cost_per_unit: parseFloat(document.getElementById('inv-cost').value)||0 };
+  if (!data.item_name) { document.getElementById('modal-err').textContent = 'Item name required'; return; }
+  if (id) data.id = id;
+  const res = await apiPost(id ? '/api/admin/inventory/update' : '/api/admin/inventory/add', data);
+  if (res.success) { closeModal(); showToast(id ? 'Item updated!' : 'Item added!'); loadInvItems(); }
+  else document.getElementById('modal-err').textContent = res.error || 'Error';
+}
+
+function openAddStockModal(itemId, itemName, unit) {
+  showModal(`
+    <h3>+ Stock Add Karo</h3>
+    <div style="color:#888;margin-bottom:16px;font-size:13px">Item: <b style="color:var(--text)">${itemName}</b></div>
+    <div class="form-row"><label>Quantity (${unit})</label><input id="inv-addqty" type="number" placeholder="Kitna stock aaya"></div>
+    <div class="form-row"><label>Note (optional)</label><input id="inv-addnote" placeholder="e.g. New purchase"></div>
+    <div id="modal-err" class="err-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm btn-sm-gold" onclick="submitAddStock(${itemId})">Add Stock</button>
+    </div>`);
+}
+
+async function submitAddStock(itemId) {
+  const qty = parseFloat(document.getElementById('inv-addqty').value)||0;
+  if (!qty) { document.getElementById('modal-err').textContent = 'Quantity bharo'; return; }
+  const res = await apiPost('/api/admin/inventory/log', { item_id: itemId, quantity: qty, log_type: 'add', log_date: new Date().toISOString().split('T')[0], note: document.getElementById('inv-addnote').value.trim() });
+  if (res.success) { closeModal(); showToast(`✓ Stock added!`); loadInvItems(); }
+}
+
+async function deleteInvItem(id) {
+  if (!confirm('Delete this item?')) return;
+  await apiPost('/api/admin/inventory/delete', { id });
+  showToast('Item deleted'); loadInvItems();
+}
+
+async function loadInvUse() {
+  const items = await fetch(`${API}/api/admin/inventory`).then(r => r.json()).catch(() => []);
+  const el = document.getElementById('inv-content');
+  const today = new Date().toISOString().split('T')[0];
+
+  let html = `
+    <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px">Aaj ka Use Record Karo (${fmtDate(today)})</div>
+    <div class="card" style="padding:0;overflow:auto;margin-bottom:16px">
+    <table><thead><tr><th>Item</th><th>Stock Available</th><th>Used Today</th><th>Note</th></tr></thead><tbody>`;
+
+  if (!items.length) {
+    html += `<tr><td colspan="4" style="text-align:center;color:#888;padding:24px">Pehle items add karo</td></tr>`;
+  } else {
+    items.forEach(i => {
+      html += `<tr>
+        <td><b>${i.item_name}</b><br><small style="color:#888">${i.unit}</small></td>
+        <td style="font-weight:700;color:${parseFloat(i.current_stock)<=parseFloat(i.min_stock)?'var(--red)':'var(--green)'}">${i.current_stock} ${i.unit}</td>
+        <td><input type="number" id="use_${i.id}" placeholder="0" min="0" style="width:80px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px"></td>
+        <td><input type="text" id="note_${i.id}" placeholder="optional" style="width:130px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px"></td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  if (items.length) {
+    html += `<button class="btn-sm btn-sm-gold" onclick="submitDailyUse()">💾 Save Today's Use</button>`;
+  }
+  el.innerHTML = html;
+}
+
+async function submitDailyUse() {
+  const items = await fetch(`${API}/api/admin/inventory`).then(r => r.json()).catch(() => []);
+  const today = new Date().toISOString().split('T')[0];
+  let saved = 0;
+  for (const i of items) {
+    const qty = parseFloat(document.getElementById(`use_${i.id}`)?.value || 0);
+    if (qty > 0) {
+      await apiPost('/api/admin/inventory/log', { item_id: i.id, quantity: qty, log_type: 'use', log_date: today, note: document.getElementById(`note_${i.id}`)?.value || '' });
+      saved++;
+    }
+  }
+  showToast(`✓ ${saved} items ka use save ho gaya!`);
+  loadInvItems();
+  invSubTab = 'items';
+  renderInventory();
+}
+
+async function loadInvLog() {
+  const el = document.getElementById('inv-content');
+  const logs = await fetch(`${API}/api/admin/inventory/log`).then(r => r.json()).catch(() => []);
+
+  let html = `<div class="card" style="padding:0;overflow:auto">
+  <table><thead><tr><th>Date</th><th>Item</th><th>Type</th><th>Quantity</th><th>Note</th></tr></thead><tbody>`;
+
+  if (!logs.length) {
+    html += `<tr><td colspan="5" style="text-align:center;color:#888;padding:24px">Koi log nahi</td></tr>`;
+  } else {
+    logs.forEach(l => {
+      const isAdd = l.log_type === 'add';
+      html += `<tr>
+        <td>${fmtDate(String(l.log_date).substring(0,10))}</td>
+        <td><b>${l.item_name}</b></td>
+        <td>${isAdd ? '<span class="badge badge-green">+ Stock In</span>' : '<span class="badge badge-yellow">− Used</span>'}</td>
+        <td style="font-weight:700;color:${isAdd?'var(--green)':'var(--red)'}">${isAdd?'+':'−'}${l.quantity} ${l.unit}</td>
+        <td style="color:#888;font-size:12px">${l.note||'—'}</td>
+      </tr>`;
+    });
+  }
+  html += `</tbody></table></div>`;
+  el.innerHTML = html;
 }
 
 // ── COST SUMMARY TAB ──────────────────────────────────────

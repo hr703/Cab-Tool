@@ -107,6 +107,28 @@ def init_db():
         )
     ''')
     cur.execute("INSERT INTO settings (key, value) VALUES ('snack_cost_per_emp', '0') ON CONFLICT (key) DO NOTHING")
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS inventory_items (
+            id SERIAL PRIMARY KEY,
+            item_name TEXT NOT NULL,
+            unit TEXT DEFAULT 'pcs',
+            current_stock NUMERIC DEFAULT 0,
+            min_stock NUMERIC DEFAULT 5,
+            cost_per_unit NUMERIC DEFAULT 0,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS inventory_log (
+            id SERIAL PRIMARY KEY,
+            item_id INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+            log_date TEXT NOT NULL,
+            quantity NUMERIC NOT NULL,
+            log_type TEXT DEFAULT 'use',
+            note TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    ''')
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_driver_name TEXT DEFAULT ''")
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_driver_mobile TEXT DEFAULT ''")
     cur.execute("ALTER TABLE routes ADD COLUMN IF NOT EXISTS default_vehicle_type TEXT DEFAULT ''")
@@ -478,6 +500,22 @@ class Handler(BaseHTTPRequestHandler):
                 cur.execute('SELECT key, value FROM settings')
                 self.send_json({r['key']: r['value'] for r in cur.fetchall()})
 
+            elif path == '/api/admin/inventory':
+                cur.execute('SELECT * FROM inventory_items ORDER BY item_name')
+                self.send_json([dict(r) for r in cur.fetchall()])
+
+            elif path == '/api/admin/inventory/log':
+                q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                df = q.get('date_from',[None])[0]; dt = q.get('date_to',[None])[0]
+                if df and dt:
+                    cur.execute('''SELECT l.*, i.item_name, i.unit FROM inventory_log l
+                        JOIN inventory_items i ON l.item_id=i.id
+                        WHERE l.log_date BETWEEN %s AND %s ORDER BY l.log_date DESC''', (df, dt))
+                else:
+                    cur.execute('''SELECT l.*, i.item_name, i.unit FROM inventory_log l
+                        JOIN inventory_items i ON l.item_id=i.id ORDER BY l.log_date DESC LIMIT 100''')
+                self.send_json([dict(r) for r in cur.fetchall()])
+
             elif path == '/api/admin/routes':
                 cur.execute('SELECT * FROM routes ORDER BY route_name')
                 self.send_json([dict(r) for r in cur.fetchall()])
@@ -568,7 +606,43 @@ class Handler(BaseHTTPRequestHandler):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         try:
-            if path == '/api/admin/settings':
+            if path == '/api/admin/inventory/add':
+                cur.execute('''INSERT INTO inventory_items (item_name, unit, current_stock, min_stock, cost_per_unit)
+                    VALUES (%s,%s,%s,%s,%s) RETURNING id''',
+                    (body['item_name'], body.get('unit','pcs'), body.get('current_stock',0),
+                     body.get('min_stock',5), body.get('cost_per_unit',0)))
+                new_id = cur.fetchone()['id']
+                conn.commit()
+                self.send_json({'success': True, 'id': new_id})
+
+            elif path == '/api/admin/inventory/update':
+                cur.execute('''UPDATE inventory_items SET item_name=%s, unit=%s, current_stock=%s, min_stock=%s, cost_per_unit=%s WHERE id=%s''',
+                    (body['item_name'], body.get('unit','pcs'), body.get('current_stock',0),
+                     body.get('min_stock',5), body.get('cost_per_unit',0), body['id']))
+                conn.commit()
+                self.send_json({'success': True})
+
+            elif path == '/api/admin/inventory/delete':
+                cur.execute('DELETE FROM inventory_items WHERE id=%s', (body['id'],))
+                conn.commit()
+                self.send_json({'success': True})
+
+            elif path == '/api/admin/inventory/log':
+                # Add stock in or use out
+                item_id = body['item_id']
+                qty = float(body['quantity'])
+                log_type = body.get('log_type', 'use')
+                if log_type == 'add':
+                    cur.execute('UPDATE inventory_items SET current_stock=current_stock+%s WHERE id=%s', (qty, item_id))
+                else:
+                    cur.execute('UPDATE inventory_items SET current_stock=GREATEST(0,current_stock-%s) WHERE id=%s', (qty, item_id))
+                cur.execute('''INSERT INTO inventory_log (item_id, log_date, quantity, log_type, note)
+                    VALUES (%s,%s,%s,%s,%s)''',
+                    (item_id, body.get('log_date', ''), qty, log_type, body.get('note','')))
+                conn.commit()
+                self.send_json({'success': True})
+
+            elif path == '/api/admin/settings':
                 for key, value in body.items():
                     cur.execute("INSERT INTO settings (key,value) VALUES (%s,%s) ON CONFLICT (key) DO UPDATE SET value=%s", (key, str(value), str(value)))
                 conn.commit()
