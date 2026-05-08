@@ -295,7 +295,7 @@ async function renderAdminRoster() {
     </div>
     <div class="card" style="padding:0;overflow:auto">
     <table><thead><tr>
-      <th>Date</th><th>Employee</th><th>Department</th><th>Route</th><th>Pick Up</th><th>Cab Details</th><th>Guard</th><th>Cost</th><th></th>
+      <th>Date</th><th>Employee</th><th>Department</th><th>Route</th><th>Pick Up</th><th>Cab Details</th><th>Guard</th><th></th>
     </tr></thead><tbody>`;
 
   if (!roster.length) {
@@ -318,7 +318,6 @@ async function renderAdminRoster() {
         <td style="font-size:12px">${r.pick_location || ''}</td>
         <td style="font-size:12px">${cab}</td>
         <td style="font-size:12px">${guard}</td>
-        <td style="color:var(--primary)">₹${(parseFloat(r.cab_cost) || 0).toLocaleString('en-IN')}</td>
         <td><button class="action-btn danger" onclick="deleteRosterEntry(${r.id})">✕</button></td>
       </tr>`;
     });
