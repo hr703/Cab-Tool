@@ -1148,9 +1148,7 @@ async function loadInvItems() {
   const el = document.getElementById('inv-content');
   const lowStock = items.filter(i => parseFloat(i.current_stock) <= parseFloat(i.min_stock));
 
-  let html = `<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-    <button class="btn-sm btn-sm-gold" onclick="openInvModal()">+ Add Item</button>
-  </div>`;
+  let html = ``;
 
   if (lowStock.length) {
     html += `<div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px">
@@ -1179,7 +1177,6 @@ async function loadInvItems() {
         <td>${status}</td>
         <td>
           <button class="action-btn" onclick='openInvModal(${JSON.stringify(i)})'>Edit</button>
-          <button class="action-btn" style="color:#4fc3f7;border-color:#4fc3f7" onclick="openAddStockModal(${i.id},'${i.item_name}','${i.unit}',${i.cost_per_unit||0})">+ Add Stock</button>
           <button class="action-btn danger" onclick="deleteInvItem(${i.id})">Delete</button>
         </td>
       </tr>`;
