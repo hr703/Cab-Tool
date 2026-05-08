@@ -1585,9 +1585,10 @@ function shiftSummaryDay(n) {
 async function loadDailyCostData() {
   const el = document.getElementById('daily-cost-data');
   if (!el) return;
-  const [roster, settings] = await Promise.all([
+  const [roster, settings, invLogs] = await Promise.all([
     fetch(`${API}/api/admin/roster?date_from=${summaryDailyDate}&date_to=${summaryDailyDate}`).then(r => r.json()).catch(() => []),
-    fetch(`${API}/api/admin/settings`).then(r => r.json()).catch(() => ({}))
+    fetch(`${API}/api/admin/settings`).then(r => r.json()).catch(() => ({})),
+    fetch(`${API}/api/admin/inventory/log?date_from=${summaryDailyDate}&date_to=${summaryDailyDate}`).then(r => r.json()).catch(() => [])
   ]);
   const savedHeadcount = parseInt(settings[`headcount_${summaryDailyDate}`] || roster.length);
   const dayLabel = new Date(summaryDailyDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
@@ -1617,7 +1618,10 @@ async function loadDailyCostData() {
   const totalGuard = Object.values(byRoute).reduce((s, r) => s + r.guardCost, 0);
 
   const femaleCount = roster.length;
-  const totalSnack = savedHeadcount * snackCostPerEmp;
+  // Calculate actual meal cost from inventory daily use
+  const useEntries = invLogs.filter(l => l.log_type === 'use');
+  const actualMealCost = useEntries.reduce((sum, l) => sum + parseFloat(l.quantity) * parseFloat(l.item_cost_per_unit || 0), 0);
+  const totalSnack = actualMealCost > 0 ? actualMealCost : (savedHeadcount * snackCostPerEmp);
   const grandDay = totalCab + totalGuard + totalSnack;
 
   let html = `
@@ -1626,7 +1630,7 @@ async function loadDailyCostData() {
       <span style="font-size:13px;font-weight:600">👥 Total Employees (Male + Female):</span>
       <input id="headcount-input" type="number" value="${savedHeadcount}" min="0" style="width:80px;padding:6px 10px;border:1px solid #FCD34D;border-radius:6px;font-size:14px" onchange="updateSnackPreview()">
       <button class="btn-sm btn-sm-gold" style="font-size:12px" onclick="saveHeadcount('${summaryDailyDate}')">Save</button>
-      <span style="font-size:12px;color:#888">Female (cab): ${femaleCount} &nbsp;|&nbsp; 🍜 Snack = <span id="snack-preview">₹${totalSnack.toLocaleString('en-IN')}</span></span>
+      <span style="font-size:12px;color:#888">Female (cab): ${femaleCount} &nbsp;|&nbsp; 🍽️ Meal Cost = <b style="color:var(--primary)">₹${totalSnack.toLocaleString('en-IN')}</b>${actualMealCost>0?' (from inventory)':' (estimated)'}</span>
     </div>
     <div class="kpi-row" style="margin-bottom:20px">
       <div class="kpi"><div class="kpi-label">Female Emp (Cab)</div><div class="kpi-val">${femaleCount}</div></div>
@@ -1675,7 +1679,10 @@ async function loadCostSummary_data() {
   const dateFrom = `${summaryMonth}-01`;
   const dateTo   = `${summaryMonth}-${String(lastDay).padStart(2, '0')}`;
 
-  const roster = await fetch(`${API}/api/admin/roster?date_from=${dateFrom}&date_to=${dateTo}`).then(r => r.json()).catch(() => []);
+  const [roster, monthInvLogs] = await Promise.all([
+    fetch(`${API}/api/admin/roster?date_from=${dateFrom}&date_to=${dateTo}`).then(r => r.json()).catch(() => []),
+    fetch(`${API}/api/admin/inventory/log?date_from=${dateFrom}&date_to=${dateTo}`).then(r => r.json()).catch(() => [])
+  ]);
 
   if (!roster.length) {
     const [yr, mo] = summaryMonth.split('-');
@@ -1721,7 +1728,8 @@ async function loadCostSummary_data() {
   const totalTrips = Object.keys(tripSeen).length;
   const totalCab   = Object.values(byRoute).reduce((s, r) => s + r.cabCost, 0);
   const totalGuard = Object.values(byRoute).reduce((s, r) => s + r.guardCost, 0);
-  const totalSnack = totalEmp * snackCostPerEmp;
+  const actualMonthMeal = monthInvLogs.filter(l=>l.log_type==='use').reduce((s,l)=>s+parseFloat(l.quantity)*parseFloat(l.item_cost_per_unit||0),0);
+  const totalSnack = actualMonthMeal > 0 ? actualMonthMeal : (totalEmp * snackCostPerEmp);
   const grandTotal = totalCab + totalGuard + totalSnack;
 
   const [yr, mo] = summaryMonth.split('-');

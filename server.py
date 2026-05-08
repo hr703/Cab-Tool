@@ -517,11 +517,11 @@ class Handler(BaseHTTPRequestHandler):
                 q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 df = q.get('date_from',[None])[0]; dt = q.get('date_to',[None])[0]
                 if df and dt:
-                    cur.execute('''SELECT l.*, i.item_name, i.unit FROM inventory_log l
+                    cur.execute('''SELECT l.*, i.item_name, i.unit, i.cost_per_unit as item_cost_per_unit FROM inventory_log l
                         JOIN inventory_items i ON l.item_id=i.id
                         WHERE l.log_date BETWEEN %s AND %s ORDER BY l.log_date DESC''', (df, dt))
                 else:
-                    cur.execute('''SELECT l.*, i.item_name, i.unit FROM inventory_log l
+                    cur.execute('''SELECT l.*, i.item_name, i.unit, i.cost_per_unit as item_cost_per_unit FROM inventory_log l
                         JOIN inventory_items i ON l.item_id=i.id ORDER BY l.log_date DESC LIMIT 100''')
                 self.send_json([dict(r) for r in cur.fetchall()])
 
