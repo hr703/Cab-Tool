@@ -659,11 +659,28 @@ class Handler(BaseHTTPRequestHandler):
                         purchase_date=CASE WHEN purchase_date IS NULL OR purchase_date='' THEN %s ELSE purchase_date END
                         WHERE id=%s''', (qty, body.get('log_date', ''), item_id))
                 else:
-                    cur.execute('UPDATE inventory_items SET current_stock=GREATEST(0,current_stock-%s) WHERE id=%s', (qty, item_id))
+                    # For 'use' type: upsert — if same item+date exists, update quantity
+                    log_date = body.get('log_date', '')
+                    note = body.get('note', '')
+                    cur.execute('SELECT id, quantity FROM inventory_log WHERE item_id=%s AND log_date=%s AND log_type=%s',
+                        (item_id, log_date, 'use'))
+                    existing = cur.fetchone()
+                    if existing:
+                        new_qty = float(existing['quantity']) + qty
+                        diff = new_qty - float(existing['quantity'])
+                        cur.execute('UPDATE inventory_items SET current_stock=GREATEST(0,current_stock-%s) WHERE id=%s', (qty, item_id))
+                        cur.execute('UPDATE inventory_log SET quantity=%s, note=%s WHERE id=%s', (new_qty, note, existing['id']))
+                        conn.commit()
+                        self.send_json({'success': True})
+                        return
+                    else:
+                        cur.execute('UPDATE inventory_items SET current_stock=GREATEST(0,current_stock-%s) WHERE id=%s', (qty, item_id))
                 cost = float(body.get('cost_per_unit', 0))
+                log_date = body.get('log_date', '')
+                note = body.get('note', '')
                 cur.execute('''INSERT INTO inventory_log (item_id, log_date, quantity, log_type, note, cost_per_unit)
                     VALUES (%s,%s,%s,%s,%s,%s)''',
-                    (item_id, body.get('log_date', ''), qty, log_type, body.get('note',''), cost))
+                    (item_id, log_date, qty, log_type, note, cost))
                 conn.commit()
                 self.send_json({'success': True})
 
