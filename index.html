@@ -1260,13 +1260,23 @@ async function loadInvUse() {
   const el = document.getElementById('inv-content');
   const empCount = Array.isArray(rosterRes) ? rosterRes.length : (rosterRes.roster ? rosterRes.roster.length : 0);
 
+  // load saved emp count for this date
+  const savedEmpKey = `inv_emp_${invUseDate}`;
+  const settingsRes = await fetch(`${API}/api/admin/settings`).then(r=>r.json()).catch(()=>({}));
+  const savedEmp = settingsRes[savedEmpKey] || '';
+
   let html = `
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap">
       <div style="font-size:14px;font-weight:600">Use Record Karo</div>
       <input type="date" value="${invUseDate}" onchange="invUseDate=this.value;loadInvUse()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:13px">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:13px">
-        👥 Employees on ${fmtDate(invUseDate)}: <b style="color:var(--primary)">${empCount}</b>
+        👥 Roster: <b style="color:var(--primary)">${empCount}</b>
       </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <label style="font-size:13px;color:#888">Employees who had snack:</label>
+      <input type="number" id="inv-emp-count" value="${savedEmp}" placeholder="0" min="0"
+        style="width:80px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:14px">
     </div>
     <div class="card" style="padding:0;overflow:auto;margin-bottom:16px">
     <table><thead><tr><th>Item</th><th>Stock Available</th><th>Used</th><th>Note</th></tr></thead><tbody>`;
@@ -1292,7 +1302,8 @@ async function loadInvUse() {
   const logs = await fetch(`${API}/api/admin/inventory/log`).then(r => r.json()).catch(() => []);
   const dayLogs = logs.filter(l => l.log_type === 'use' && String(l.log_date).substring(0,10) === invUseDate);
   if (dayLogs.length) {
-    html += `<div style="margin-top:20px;font-weight:600;font-size:13px;color:#888;margin-bottom:8px">✅ Already saved for ${fmtDate(invUseDate)}:</div>
+    const savedEmpDisp = settingsRes[savedEmpKey] ? `&nbsp;·&nbsp;👥 <b>${settingsRes[savedEmpKey]}</b> employees` : '';
+    html += `<div style="margin-top:20px;font-weight:600;font-size:13px;color:#888;margin-bottom:8px">✅ Already saved for ${fmtDate(invUseDate)}${savedEmpDisp}:</div>
     <div class="card" style="padding:0;overflow:auto">
     <table><thead><tr><th>Item</th><th>Consumed</th><th>Note</th></tr></thead><tbody>`;
     dayLogs.forEach(l => {
@@ -1319,6 +1330,8 @@ async function submitDailyUse() {
       saved++;
     }
   }
+  const empCount = document.getElementById('inv-emp-count')?.value || '';
+  if (empCount) await apiPost('/api/admin/settings', { [`inv_emp_${today}`]: empCount });
   showToast(`✓ ${saved} items ka use save ho gaya!`);
   loadInvUse();
 }
