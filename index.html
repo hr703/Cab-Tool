@@ -1279,7 +1279,7 @@ async function loadInvUse() {
         style="width:80px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:14px">
     </div>
     <div class="card" style="padding:0;overflow:auto;margin-bottom:16px">
-    <table><thead><tr><th>Item</th><th>Stock Available</th><th>Used</th><th>Note</th></tr></thead><tbody>`;
+    <table><thead><tr><th>Item</th><th>Stock Available</th><th>Used</th><th>No. of Employees</th><th>Note</th></tr></thead><tbody>`;
 
   if (!items.length) {
     html += `<tr><td colspan="4" style="text-align:center;color:#888;padding:24px">Pehle items add karo</td></tr>`;
@@ -1289,6 +1289,7 @@ async function loadInvUse() {
         <td><b>${i.item_name}</b><br><small style="color:#888">${i.unit}</small></td>
         <td style="font-weight:700;color:${parseFloat(i.current_stock)<=parseFloat(i.min_stock)?'var(--red)':'var(--green)'}">${i.current_stock} ${i.unit}</td>
         <td><input type="number" id="use_${i.id}" placeholder="0" min="0" style="width:80px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px"></td>
+        <td><input type="number" id="emp_${i.id}" placeholder="0" min="0" style="width:80px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:14px"></td>
         <td><input type="text" id="note_${i.id}" placeholder="optional" style="width:130px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px"></td>
       </tr>`;
     });
@@ -1326,7 +1327,10 @@ async function submitDailyUse() {
   for (const i of items) {
     const qty = parseFloat(document.getElementById(`use_${i.id}`)?.value || 0);
     if (qty > 0) {
-      await apiPost('/api/admin/inventory/log', { item_id: i.id, quantity: qty, log_type: 'use', log_date: today, note: document.getElementById(`note_${i.id}`)?.value || '' });
+      const empVal = document.getElementById(`emp_${i.id}`)?.value || '';
+      const noteVal = document.getElementById(`note_${i.id}`)?.value || '';
+      const noteWithEmp = empVal ? `Emp:${empVal}${noteVal ? ' | '+noteVal : ''}` : noteVal;
+      await apiPost('/api/admin/inventory/log', { item_id: i.id, quantity: qty, log_type: 'use', log_date: today, note: noteWithEmp });
       saved++;
     }
   }
