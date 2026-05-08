@@ -1126,6 +1126,7 @@ async function adminSubmitGuard(rosterId) {
 // ── INVENTORY TAB ─────────────────────────────────────────
 let invSubTab = 'items';
 let invLogDate = new Date().toISOString().split('T')[0];
+let purMonth = new Date().toISOString().substring(0, 7);
 
 async function renderInventory() {
   const el = document.getElementById('tab-inventory');
@@ -1327,24 +1328,56 @@ async function loadInvPurchases() {
   ]);
   const purchases = logs.filter(l => l.log_type === 'add');
 
+  // filter by selected month
+  const monthPurchases = purchases.filter(p => String(p.log_date).substring(0,7) === purMonth);
+
   let totalCost = 0;
-  purchases.forEach(p => { totalCost += parseFloat(p.quantity) * (parseFloat(p.cost_per_unit)||0); });
+  monthPurchases.forEach(p => { totalCost += parseFloat(p.quantity) * (parseFloat(p.cost_per_unit)||0); });
+
+  // monthly summary by item
+  const summary = {};
+  monthPurchases.forEach(p => {
+    if (!summary[p.item_name]) summary[p.item_name] = { unit: p.unit, count: 0, totalQty: 0, totalCost: 0 };
+    summary[p.item_name].count++;
+    summary[p.item_name].totalQty += parseFloat(p.quantity);
+    summary[p.item_name].totalCost += parseFloat(p.quantity) * (parseFloat(p.cost_per_unit)||0);
+  });
 
   const itemOpts = items.map(i => `<option value="${i.id}" data-cost="${i.cost_per_unit||0}" data-unit="${i.unit}">${i.item_name}</option>`).join('');
 
   let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
     <button class="btn-sm btn-sm-gold" onclick="openNewPurchaseModal()">+ New Purchase</button>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-size:14px">
-      Total Spend: <b style="color:var(--primary)">₹${totalCost.toLocaleString('en-IN')}</b>
+    <div style="display:flex;align-items:center;gap:10px">
+      <input type="month" value="${purMonth}" onchange="purMonth=this.value;loadInvPurchases()" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:13px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-size:14px">
+        Total Spend: <b style="color:var(--primary)">₹${totalCost.toLocaleString('en-IN')}</b>
+      </div>
     </div>
-  </div>
-  <div class="card" style="padding:0;overflow:auto">
+  </div>`;
+
+  // Monthly summary card
+  if (Object.keys(summary).length) {
+    html += `<div class="card" style="margin-bottom:16px">
+      <div style="font-weight:700;margin-bottom:10px;font-size:14px">📊 Monthly Summary — ${purMonth}</div>
+      <table><thead><tr><th>Item</th><th>Times Purchased</th><th>Total Units</th><th>Total Cost</th></tr></thead><tbody>`;
+    Object.entries(summary).forEach(([name, s]) => {
+      html += `<tr>
+        <td><b>${name}</b></td>
+        <td style="text-align:center;font-weight:700;color:var(--primary)">${s.count} baar</td>
+        <td style="font-weight:700">${s.totalQty} ${s.unit}</td>
+        <td style="font-weight:700;color:var(--green)">₹${s.totalCost.toLocaleString('en-IN')}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  html += `<div class="card" style="padding:0;overflow:auto">
   <table><thead><tr><th>Date of Purchase</th><th>Item</th><th>Total Unit</th><th>Cost per Unit</th><th>Total Cost</th></tr></thead><tbody>`;
 
-  if (!purchases.length) {
-    html += `<tr><td colspan="5" style="text-align:center;color:#888;padding:24px">Koi purchase nahi. "+ New Purchase" se add karo.</td></tr>`;
+  if (!monthPurchases.length) {
+    html += `<tr><td colspan="5" style="text-align:center;color:#888;padding:24px">Is mahine koi purchase nahi.</td></tr>`;
   } else {
-    purchases.forEach(p => {
+    monthPurchases.forEach(p => {
       const qty = parseFloat(p.quantity);
       const cpu = parseFloat(p.cost_per_unit)||0;
       const total = qty * cpu;
