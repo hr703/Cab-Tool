@@ -936,6 +936,18 @@ async function renderCostSummary() {
   else loadMonthlySummary();
 }
 
+function updateSnackPreview() {
+  const hc = parseInt(document.getElementById('headcount-input').value) || 0;
+  const el = document.getElementById('snack-preview');
+  if (el) el.textContent = '₹' + (hc * snackCostPerEmp).toLocaleString('en-IN');
+}
+
+async function saveHeadcount(date) {
+  const hc = parseInt(document.getElementById('headcount-input').value) || 0;
+  const res = await apiPost('/api/admin/settings', { [`headcount_${date}`]: hc });
+  if (res.success) { showToast(`✓ ${date} ke liye ${hc} employees saved!`); loadDailyCostData(); }
+}
+
 async function saveSnackCost() {
   const val = parseFloat(document.getElementById('snack-cost-input').value) || 0;
   const res = await apiPost('/api/admin/settings', { snack_cost_per_emp: val });
@@ -988,7 +1000,11 @@ function shiftSummaryDay(n) {
 async function loadDailyCostData() {
   const el = document.getElementById('daily-cost-data');
   if (!el) return;
-  const roster = await fetch(`${API}/api/admin/roster?date_from=${summaryDailyDate}&date_to=${summaryDailyDate}`).then(r => r.json()).catch(() => []);
+  const [roster, settings] = await Promise.all([
+    fetch(`${API}/api/admin/roster?date_from=${summaryDailyDate}&date_to=${summaryDailyDate}`).then(r => r.json()).catch(() => []),
+    fetch(`${API}/api/admin/settings`).then(r => r.json()).catch(() => ({}))
+  ]);
+  const savedHeadcount = parseInt(settings[`headcount_${summaryDailyDate}`] || roster.length);
   const dayLabel = new Date(summaryDailyDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
 
   if (!roster.length) {
@@ -1015,13 +1031,21 @@ async function loadDailyCostData() {
   const totalCab = Object.values(byRoute).reduce((s, r) => s + r.cabCost, 0);
   const totalGuard = Object.values(byRoute).reduce((s, r) => s + r.guardCost, 0);
 
-  const totalSnack = roster.length * snackCostPerEmp;
+  const femaleCount = roster.length;
+  const totalSnack = savedHeadcount * snackCostPerEmp;
   const grandDay = totalCab + totalGuard + totalSnack;
 
   let html = `
     <div style="font-size:16px;font-weight:700;color:var(--primary);margin-bottom:16px">${dayLabel}</div>
+    <div style="background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:600">👥 Total Employees (Male + Female):</span>
+      <input id="headcount-input" type="number" value="${savedHeadcount}" min="0" style="width:80px;padding:6px 10px;border:1px solid #FCD34D;border-radius:6px;font-size:14px" onchange="updateSnackPreview()">
+      <button class="btn-sm btn-sm-gold" style="font-size:12px" onclick="saveHeadcount('${summaryDailyDate}')">Save</button>
+      <span style="font-size:12px;color:#888">Female (cab): ${femaleCount} &nbsp;|&nbsp; 🍜 Snack = <span id="snack-preview">₹${totalSnack.toLocaleString('en-IN')}</span></span>
+    </div>
     <div class="kpi-row" style="margin-bottom:20px">
-      <div class="kpi"><div class="kpi-label">Employees</div><div class="kpi-val">${roster.length}</div></div>
+      <div class="kpi"><div class="kpi-label">Female Emp (Cab)</div><div class="kpi-val">${femaleCount}</div></div>
+      <div class="kpi"><div class="kpi-label">Total Emp (Snack)</div><div class="kpi-val" style="color:#F59E0B">${savedHeadcount}</div></div>
       <div class="kpi"><div class="kpi-label">🚗 Cab Cost</div><div class="kpi-val" style="color:var(--primary)">₹${totalCab.toLocaleString('en-IN')}</div></div>
       <div class="kpi"><div class="kpi-label">🛡️ Guard Cost</div><div class="kpi-val" style="color:#4fc3f7">₹${totalGuard.toLocaleString('en-IN')}</div></div>
       <div class="kpi"><div class="kpi-label">🍜 Snack Cost</div><div class="kpi-val" style="color:#F59E0B">₹${totalSnack.toLocaleString('en-IN')}</div></div>
