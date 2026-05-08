@@ -1712,8 +1712,14 @@ async function loadCostSummary_data() {
       byRoute[rname].guardCost += guardCost;
     }
 
-    if (!byDate[date]) byDate[date] = { empCount: 0, cabCost: 0, guardCost: 0 };
+    if (!byDate[date]) byDate[date] = { empCount: 0, cabCost: 0, guardCost: 0, mealCost: 0 };
     byDate[date].empCount++;
+  });
+
+  // Fill meal cost per date from inventory use logs
+  monthInvLogs.filter(l => l.log_type === 'use').forEach(l => {
+    const date = String(l.log_date).substring(0, 10);
+    if (byDate[date]) byDate[date].mealCost += parseFloat(l.quantity) * parseFloat(l.item_cost_per_unit || 0);
   });
 
   // Fill date cab/guard cost from unique trips
@@ -1783,19 +1789,22 @@ async function loadCostSummary_data() {
     <th>Date</th><th>Employees</th>
     <th style="color:var(--primary)">Cab Cost</th>
     <th style="color:#4fc3f7">Guard Cost</th>
+    <th style="color:#F59E0B">Meal Cost</th>
     <th>Total</th>
   </tr></thead><tbody>`;
 
-  let gCab = 0, gGuard = 0, gEmp = 0;
+  let gCab = 0, gGuard = 0, gEmp = 0, gMeal = 0;
   Object.keys(byDate).sort().forEach(date => {
     const d = byDate[date];
-    const total = d.cabCost + d.guardCost;
-    gCab += d.cabCost; gGuard += d.guardCost; gEmp += d.empCount;
+    const meal = d.mealCost || 0;
+    const total = d.cabCost + d.guardCost + meal;
+    gCab += d.cabCost; gGuard += d.guardCost; gEmp += d.empCount; gMeal += meal;
     html += `<tr>
       <td><b>${fmtDate(date)}</b></td>
       <td style="text-align:center">${d.empCount}</td>
       <td style="color:var(--primary);font-weight:600">₹${d.cabCost.toLocaleString('en-IN')}</td>
       <td style="color:#4fc3f7;font-weight:600">₹${d.guardCost.toLocaleString('en-IN')}</td>
+      <td style="color:#F59E0B;font-weight:600">${meal>0?'₹'+meal.toLocaleString('en-IN'):'—'}</td>
       <td style="font-weight:700">₹${total.toLocaleString('en-IN')}</td>
     </tr>`;
   });
@@ -1804,7 +1813,8 @@ async function loadCostSummary_data() {
     <td style="text-align:center;font-weight:700">${gEmp}</td>
     <td style="color:var(--primary);font-weight:700;font-size:15px">₹${gCab.toLocaleString('en-IN')}</td>
     <td style="color:#4fc3f7;font-weight:700;font-size:15px">₹${gGuard.toLocaleString('en-IN')}</td>
-    <td style="font-weight:700;font-size:15px">₹${(gCab+gGuard).toLocaleString('en-IN')}</td>
+    <td style="color:#F59E0B;font-weight:700;font-size:15px">₹${gMeal.toLocaleString('en-IN')}</td>
+    <td style="font-weight:700;font-size:15px">₹${(gCab+gGuard+gMeal).toLocaleString('en-IN')}</td>
   </tr>`;
   html += `</tbody></table></div>`;
 
