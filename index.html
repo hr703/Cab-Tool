@@ -198,12 +198,14 @@ async function renderAdminView() {
       <button class="tab-btn" onclick="adminTab('employees',this)">Employees</button>
       <button class="tab-btn" onclick="adminTab('vendors',this)">Vendors</button>
       <button class="tab-btn" onclick="adminTab('cost',this)">Cost Report</button>
+      <button class="tab-btn" onclick="adminTab('costsplit',this)">Cost Split</button>
     </div>
     <div id="tab-roster" class="tab-content active"></div>
     <div id="tab-routes" class="tab-content"></div>
     <div id="tab-employees" class="tab-content"></div>
     <div id="tab-vendors" class="tab-content"></div>
-    <div id="tab-cost" class="tab-content"></div>`;
+    <div id="tab-cost" class="tab-content"></div>
+    <div id="tab-costsplit" class="tab-content"></div>`;
   await Promise.all([loadRoutes(), loadEmployees(), loadVendors()]);
   renderAdminRoster();
 }
@@ -218,6 +220,7 @@ function adminTab(name, btn) {
   else if (name === 'employees') renderAdminEmployees();
   else if (name === 'vendors') renderAdminVendors();
   else if (name === 'cost') { costViewAll = true; renderAdminCost(); }
+  else if (name === 'costsplit') { costViewAll = true; renderAdminCostSplit(); }
 }
 
 async function loadRoutes() { routesCache = await fetch(API + '/api/admin/routes').then(r => r.json()).catch(() => []); }
@@ -334,16 +337,17 @@ async function renderAdminRoutes() {
       <button class="btn-sm btn-sm-gold" onclick="openRouteModal()">+ Add Route</button>
     </div>
     <div class="card" style="padding:0;overflow:auto">
-    <table><thead><tr><th>Route</th><th>Pick Location</th><th>Drop Location</th><th>Pick Time</th><th>Drop Time</th><th>Report Time</th><th>Cost/Trip</th><th></th></tr></thead><tbody>`;
+    <table><thead><tr><th>Route</th><th>Pick Location</th><th>Drop Location</th><th>Pick Time</th><th>Drop Time</th><th>Report Time</th><th>Cab Cost/Trip</th><th>Guard Cost/Trip</th><th></th></tr></thead><tbody>`;
   if (!routesCache.length) {
-    html += `<tr><td colspan="8" style="text-align:center;color:#555;padding:30px">No routes yet</td></tr>`;
+    html += `<tr><td colspan="9" style="text-align:center;color:#555;padding:30px">No routes yet</td></tr>`;
   } else {
     routesCache.forEach(r => {
       html += `<tr>
         <td><b>${r.route_name}</b><br><small style="color:#666">${r.description || ''}</small></td>
         <td>${r.pick_location || ''}</td><td>${r.drop_location || ''}</td>
         <td>${r.pick_time || ''}</td><td>${r.drop_time || ''}</td><td>${r.report_time || ''}</td>
-        <td style="color:var(--gold);font-weight:700">₹${(parseFloat(r.cab_cost) || 0).toLocaleString('en-IN')}</td>
+        <td style="color:var(--primary);font-weight:700">₹${(parseFloat(r.cab_cost) || 0).toLocaleString('en-IN')}</td>
+        <td style="color:#4fc3f7;font-weight:700">₹${(parseFloat(r.guard_cost) || 0).toLocaleString('en-IN')}</td>
         <td>
           <button class="action-btn" onclick='openRouteModal(${JSON.stringify(r)})'>Edit</button>
           <button class="action-btn danger" onclick="deleteRoute(${r.id})">Delete</button>
@@ -372,6 +376,7 @@ function openRouteModal(r) {
       <div class="form-row"><label>Report Time</label><input id="r-rtime" value="${r.report_time || ''}" placeholder="e.g. 06:30 AM"></div>
       <div class="form-row"><label>Cab Cost per Trip (₹)</label><input id="r-cost" type="number" value="${r.cab_cost || 0}"></div>
     </div>
+    <div class="form-row"><label>Guard Cost per Trip (₹)</label><input id="r-gcost" type="number" value="${r.guard_cost || 0}" placeholder="Security guard cost per night"></div>
     <div id="modal-err" class="err-msg"></div>
     <div class="modal-actions">
       <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
@@ -380,7 +385,7 @@ function openRouteModal(r) {
 }
 
 async function submitRoute(id) {
-  const data = { route_name: document.getElementById('r-name').value.trim(), description: document.getElementById('r-desc').value.trim(), pick_location: document.getElementById('r-pick').value.trim(), drop_location: document.getElementById('r-drop').value.trim(), pick_time: document.getElementById('r-ptime').value.trim(), drop_time: document.getElementById('r-dtime').value.trim(), report_time: document.getElementById('r-rtime').value.trim(), cab_cost: parseFloat(document.getElementById('r-cost').value) || 0 };
+  const data = { route_name: document.getElementById('r-name').value.trim(), description: document.getElementById('r-desc').value.trim(), pick_location: document.getElementById('r-pick').value.trim(), drop_location: document.getElementById('r-drop').value.trim(), pick_time: document.getElementById('r-ptime').value.trim(), drop_time: document.getElementById('r-dtime').value.trim(), report_time: document.getElementById('r-rtime').value.trim(), cab_cost: parseFloat(document.getElementById('r-cost').value) || 0, guard_cost: parseFloat(document.getElementById('r-gcost').value) || 0 };
   if (!data.route_name) { document.getElementById('modal-err').textContent = 'Route name required'; return; }
   if (id) data.id = id;
   const res = await apiPost(id ? '/api/admin/routes/update' : '/api/admin/routes', data);
@@ -619,6 +624,131 @@ async function renderAdminCost() {
   document.getElementById('tab-cost').innerHTML = html;
   } catch(err) {
     document.getElementById('tab-cost').innerHTML = `<div style="padding:20px;color:red">Error: ${err.message || err}</div>`;
+  }
+}
+
+// ── COST SPLIT TAB ────────────────────────────────────────
+async function renderAdminCostSplit() {
+  document.getElementById('tab-costsplit').innerHTML = '<div style="padding:20px;color:#888">Loading...</div>';
+  try {
+    const dates = getWeekDates(rosterWeekOffset);
+    const url = costViewAll
+      ? `${API}/api/admin/roster`
+      : `${API}/api/admin/roster?date_from=${dates[0]}&date_to=${dates[6]}`;
+    const roster = await fetch(url).then(r => r.json()).catch(e => { throw e; });
+
+    const allRoutes = [...new Set(roster.map(r => r.route_name))].sort();
+    const byDate = {};
+    roster.forEach(r => {
+      const d = String(r.shift_date).substring(0, 10);
+      if (!byDate[d]) byDate[d] = {};
+      if (!byDate[d][r.route_name]) byDate[d][r.route_name] = { empCount: 0, cabCost: parseFloat(r.cab_cost) || 0, guardCost: parseFloat(r.guard_cost) || 0 };
+      byDate[d][r.route_name].empCount++;
+    });
+
+    let grandCab = 0, grandGuard = 0, grandEmp = 0;
+    Object.values(byDate).forEach(day => Object.values(day).forEach(rt => {
+      grandCab += rt.cabCost; grandGuard += rt.guardCost; grandEmp += rt.empCount;
+    }));
+
+    let html = `
+      <div class="kpi-row">
+        <div class="kpi"><div class="kpi-label">Total Employees</div><div class="kpi-val">${grandEmp}</div></div>
+        <div class="kpi"><div class="kpi-label">Total Cab Cost</div><div class="kpi-val" style="color:var(--primary)">₹${grandCab.toLocaleString('en-IN')}</div></div>
+        <div class="kpi"><div class="kpi-label">Total Guard Cost</div><div class="kpi-val" style="color:#4fc3f7">₹${grandGuard.toLocaleString('en-IN')}</div></div>
+        <div class="kpi"><div class="kpi-label">Grand Total</div><div class="kpi-val">₹${(grandCab + grandGuard).toLocaleString('en-IN')}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+        ${costViewAll ? '' : `
+          <button class="btn-sm btn-sm-outline" onclick="costViewAll=false;rosterWeekOffset--;renderAdminCostSplit()">◀ Prev Week</button>
+          <button class="btn-sm btn-sm-outline" onclick="costViewAll=false;rosterWeekOffset=0;renderAdminCostSplit()">This Week</button>
+          <button class="btn-sm btn-sm-outline" onclick="costViewAll=false;rosterWeekOffset++;renderAdminCostSplit()">Next Week ▶</button>
+        `}
+        <button class="btn-sm ${costViewAll ? 'btn-sm-gold' : 'btn-sm-outline'}" onclick="costViewAll=!costViewAll;renderAdminCostSplit()">
+          ${costViewAll ? '✓ All Dates' : 'All Dates'}
+        </button>
+      </div>
+      <h3 style="color:var(--primary);margin:0 0 10px">Date-wise Cost Split</h3>
+      <div class="card" style="padding:0;overflow:auto;margin-bottom:24px">
+      <table><thead><tr>
+        <th>Date</th><th>Route</th><th>Employees</th>
+        <th style="color:var(--primary)">Cab Cost (₹)</th>
+        <th style="color:#4fc3f7">Guard Cost (₹)</th>
+        <th>Total (₹)</th>
+      </tr></thead><tbody>`;
+
+    if (!Object.keys(byDate).length) {
+      html += `<tr><td colspan="6" style="text-align:center;color:#555;padding:24px">No data found</td></tr>`;
+    } else {
+      let prevDate = '';
+      let sortedEntries = [];
+      Object.keys(byDate).sort().forEach(date => {
+        allRoutes.forEach(rt => {
+          if (byDate[date][rt]) sortedEntries.push({ date, rt, ...byDate[date][rt] });
+        });
+      });
+      sortedEntries.forEach((e, i) => {
+        const isNewDate = e.date !== prevDate;
+        if (isNewDate) prevDate = e.date;
+        const total = e.cabCost + e.guardCost;
+        html += `<tr>
+          <td>${isNewDate ? `<b>${fmtDate(e.date)}</b>` : ''}</td>
+          <td><b>${e.rt}</b></td>
+          <td style="text-align:center;font-weight:600;color:#4fc3f7">${e.empCount}</td>
+          <td style="color:var(--primary);font-weight:600">₹${e.cabCost.toLocaleString('en-IN')}</td>
+          <td style="color:#4fc3f7;font-weight:600">₹${e.guardCost.toLocaleString('en-IN')}</td>
+          <td style="font-weight:700">₹${total.toLocaleString('en-IN')}</td>
+        </tr>`;
+      });
+      html += `<tr style="background:#f0f4ff">
+        <td colspan="2" style="text-align:right;font-weight:700;color:var(--text)">Grand Total:</td>
+        <td style="text-align:center;font-weight:700;color:#4fc3f7">${grandEmp}</td>
+        <td style="color:var(--primary);font-weight:700;font-size:15px">₹${grandCab.toLocaleString('en-IN')}</td>
+        <td style="color:#4fc3f7;font-weight:700;font-size:15px">₹${grandGuard.toLocaleString('en-IN')}</td>
+        <td style="font-weight:700;font-size:15px">₹${(grandCab + grandGuard).toLocaleString('en-IN')}</td>
+      </tr>`;
+    }
+    html += `</tbody></table></div>`;
+
+    // Route-wise summary
+    const byRoute = {};
+    roster.forEach(r => {
+      if (!byRoute[r.route_name]) byRoute[r.route_name] = { trips: new Set(), empCount: 0, cabCost: parseFloat(r.cab_cost) || 0, guardCost: parseFloat(r.guard_cost) || 0 };
+      byRoute[r.route_name].trips.add(String(r.shift_date).substring(0, 10));
+      byRoute[r.route_name].empCount++;
+    });
+
+    html += `<h3 style="color:var(--primary);margin:0 0 10px">Route-wise Summary</h3>
+      <div class="card" style="padding:0;overflow:auto">
+      <table><thead><tr><th>Route</th><th>Cab Cost/Trip</th><th>Guard Cost/Trip</th><th>Total Trips</th><th>Total Cab</th><th>Total Guard</th><th>Grand Total</th></tr></thead><tbody>`;
+
+    let sumCab = 0, sumGuard = 0;
+    Object.entries(byRoute).sort().forEach(([name, d]) => {
+      const trips = d.trips.size;
+      const totalCab = d.cabCost * trips;
+      const totalGuard = d.guardCost * trips;
+      sumCab += totalCab; sumGuard += totalGuard;
+      html += `<tr>
+        <td><b>${name}</b></td>
+        <td style="color:var(--primary)">₹${d.cabCost.toLocaleString('en-IN')}</td>
+        <td style="color:#4fc3f7">₹${d.guardCost.toLocaleString('en-IN')}</td>
+        <td style="text-align:center">${trips}</td>
+        <td style="color:var(--primary);font-weight:600">₹${totalCab.toLocaleString('en-IN')}</td>
+        <td style="color:#4fc3f7;font-weight:600">₹${totalGuard.toLocaleString('en-IN')}</td>
+        <td style="font-weight:700">₹${(totalCab + totalGuard).toLocaleString('en-IN')}</td>
+      </tr>`;
+    });
+    html += `<tr style="background:#f0f4ff">
+      <td colspan="4" style="text-align:right;font-weight:700">Grand Total:</td>
+      <td style="color:var(--primary);font-weight:700;font-size:15px">₹${sumCab.toLocaleString('en-IN')}</td>
+      <td style="color:#4fc3f7;font-weight:700;font-size:15px">₹${sumGuard.toLocaleString('en-IN')}</td>
+      <td style="font-weight:700;font-size:15px">₹${(sumCab + sumGuard).toLocaleString('en-IN')}</td>
+    </tr>`;
+    html += `</tbody></table></div>`;
+
+    document.getElementById('tab-costsplit').innerHTML = html;
+  } catch(err) {
+    document.getElementById('tab-costsplit').innerHTML = `<div style="padding:20px;color:red">Error: ${err.message || err}</div>`;
   }
 }
 

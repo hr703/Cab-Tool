@@ -229,7 +229,7 @@ def get_roster_full(cur, where_clause='', params=()):
     cur.execute(f'''
         SELECT r.id, r.shift_date, r.employee_id, r.route_id,
                ne.emp_name, ne.emp_code, ne.email, ne.mobile, ne.department,
-               ro.route_name, ro.pick_location, ro.drop_location, ro.pick_time, ro.drop_time, ro.cab_cost,
+               ro.route_name, ro.pick_location, ro.drop_location, ro.pick_time, ro.drop_time, ro.cab_cost, ro.guard_cost,
                ca.id as cab_id, ca.driver_name, ca.driver_mobile, ca.vehicle_type, ca.vehicle_number, ca.vendor_id as cab_vendor_id,
                sa.id as sec_id, sa.guard_name, sa.guard_mobile, sa.vendor_id as sec_vendor_id
         FROM roster r
@@ -564,11 +564,11 @@ class Handler(BaseHTTPRequestHandler):
 
             elif path == '/api/admin/routes':
                 cur.execute('''
-                    INSERT INTO routes (route_name, description, pick_location, drop_location, pick_time, drop_time, report_time, cab_cost)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+                    INSERT INTO routes (route_name, description, pick_location, drop_location, pick_time, drop_time, report_time, cab_cost, guard_cost)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
                 ''', (body['route_name'], body.get('description',''), body.get('pick_location',''),
                       body.get('drop_location',''), body.get('pick_time',''), body.get('drop_time',''),
-                      body.get('report_time',''), body.get('cab_cost', 0)))
+                      body.get('report_time',''), body.get('cab_cost', 0), body.get('guard_cost', 0)))
                 new_id = cur.fetchone()['id']
                 conn.commit()
                 self.send_json({'success': True, 'id': new_id})
@@ -576,10 +576,10 @@ class Handler(BaseHTTPRequestHandler):
             elif path == '/api/admin/routes/update':
                 cur.execute('''
                     UPDATE routes SET route_name=%s, description=%s, pick_location=%s, drop_location=%s,
-                    pick_time=%s, drop_time=%s, report_time=%s, cab_cost=%s WHERE id=%s
+                    pick_time=%s, drop_time=%s, report_time=%s, cab_cost=%s, guard_cost=%s WHERE id=%s
                 ''', (body['route_name'], body.get('description',''), body.get('pick_location',''),
                       body.get('drop_location',''), body.get('pick_time',''), body.get('drop_time',''),
-                      body.get('report_time',''), body.get('cab_cost', 0), body['id']))
+                      body.get('report_time',''), body.get('cab_cost', 0), body.get('guard_cost', 0), body['id']))
                 conn.commit()
                 self.send_json({'success': True})
 
