@@ -291,7 +291,7 @@ async function renderAdminRoster() {
   } else {
     roster.forEach(r => {
       const sameRouteCnt = roster.filter(x => x.route_id === r.route_id && String(x.shift_date).substring(0,10) === String(r.shift_date).substring(0,10)).length;
-      const routeNote = sameRouteCnt > 1 ? `<br><small style="color:#aaa">(${sameRouteCnt} emp ko apply)</small>` : '';
+      const routeNote = sameRouteCnt > 1 ? `<br><small style="color:#aaa">(applies to ${sameRouteCnt} emps)</small>` : '';
       const cab = r.driver_name
         ? `<span class="assigned">✓ ${r.driver_name}<br><small style="color:#888">${r.vehicle_type} ${r.vehicle_number}</small></span><br><button class="action-btn" style="margin-top:4px;font-size:11px" onclick="adminAssignCab(${r.id},'${r.emp_name}','${r.shift_date}')">Edit</button>`
         : `<button class="btn-sm btn-sm-gold" style="font-size:11px;padding:4px 10px" onclick="adminAssignCab(${r.id},'${r.emp_name}','${r.shift_date}')">+ Assign Cab</button>${routeNote}`;
@@ -366,7 +366,7 @@ function openAddRosterModal() {
     <div style="border-top:1px solid var(--border);margin:14px 0 12px;padding-top:12px">
       <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">🚗 Cab Details <span style="color:#aaa;font-weight:400">(optional)</span></div>
       <div class="two-col">
-        <div class="form-row"><label>Driver Name</label><input id="m-dname" value="${firstRoute.default_driver_name||''}" placeholder="Driver ka naam"></div>
+        <div class="form-row"><label>Driver Name</label><input id="m-dname" value="${firstRoute.default_driver_name||''}" placeholder="Driver name"></div>
         <div class="form-row"><label>Driver Mobile</label><input id="m-dmobile" value="${firstRoute.default_driver_mobile||''}" placeholder="10-digit"></div>
       </div>
       <div class="two-col">
@@ -377,7 +377,7 @@ function openAddRosterModal() {
     <div style="border-top:1px solid var(--border);margin-bottom:12px;padding-top:12px">
       <div style="font-size:12px;font-weight:700;color:#4fc3f7;margin-bottom:10px">🛡️ Security Guard <span style="color:#aaa;font-weight:400">(optional)</span></div>
       <div class="two-col">
-        <div class="form-row"><label>Guard Name</label><input id="m-gname" value="${firstRoute.default_guard_name||''}" placeholder="Guard ka naam"></div>
+        <div class="form-row"><label>Guard Name</label><input id="m-gname" value="${firstRoute.default_guard_name||''}" placeholder="Guard name"></div>
         <div class="form-row"><label>Guard Mobile</label><input id="m-gmobile" value="${firstRoute.default_guard_mobile||''}" placeholder="10-digit"></div>
       </div>
     </div>
@@ -428,7 +428,7 @@ async function submitAddRoster() {
   }
 
   closeModal();
-  showToast(`✓ ${selectedEmps.length} employee${selectedEmps.length > 1 ? 's' : ''} roster mein add!`);
+  showToast(`✓ ${selectedEmps.length} employee${selectedEmps.length > 1 ? 's' : ''} added to roster!`);
   renderAdminRoster();
 }
 
@@ -608,7 +608,7 @@ function openRouteModal(r) {
     </div>
     <div class="form-row"><label>Guard Cost per Trip (₹)</label><input id="r-gcost" type="number" value="${r.guard_cost || 0}" placeholder="Security guard cost per night"></div>
     <div style="border-top:1px solid var(--border);margin:14px 0 12px;padding-top:12px">
-      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">🚗 Default Cab (har week yahi use hoga)</div>
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px">🚗 Default Cab (used every week)</div>
       <div class="two-col">
         <div class="form-row"><label>Driver Name</label><input id="r-dname" value="${r.default_driver_name || ''}"></div>
         <div class="form-row"><label>Driver Mobile</label><input id="r-dmobile" value="${r.default_driver_mobile || ''}"></div>
@@ -619,7 +619,7 @@ function openRouteModal(r) {
       </div>
     </div>
     <div style="border-top:1px solid var(--border);margin-bottom:12px;padding-top:12px">
-      <div style="font-size:12px;font-weight:700;color:#4fc3f7;margin-bottom:10px">🛡️ Default Guard (har week yahi use hoga)</div>
+      <div style="font-size:12px;font-weight:700;color:#4fc3f7;margin-bottom:10px">🛡️ Default Guard (used every week)</div>
       <div class="two-col">
         <div class="form-row"><label>Guard Name</label><input id="r-gname" value="${r.default_guard_name || ''}"></div>
         <div class="form-row"><label>Guard Mobile</label><input id="r-gmobile" value="${r.default_guard_mobile || ''}"></div>
@@ -1014,12 +1014,12 @@ async function openWeeklyAssignGrid(dateFrom, dateTo) {
         html += `<td style="color:#ccc;text-align:center;font-size:11px">—</td>`;
       } else {
         html += `<td style="padding:4px">
-          <input placeholder="Driver naam" value="${ex.driver_name}" data-route="${rt.id}" data-date="${d}" data-f="driver_name" style="width:100%;margin-bottom:3px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:11px">
+          <input placeholder="Driver name" value="${ex.driver_name}" data-route="${rt.id}" data-date="${d}" data-f="driver_name" style="width:100%;margin-bottom:3px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:11px">
           <input placeholder="Mobile" value="${ex.driver_mobile}" data-route="${rt.id}" data-date="${d}" data-f="driver_mobile" style="width:100%;margin-bottom:3px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:11px">
           <input placeholder="Vehicle (e.g. Swift)" value="${ex.vehicle_type}" data-route="${rt.id}" data-date="${d}" data-f="vehicle_type" style="width:100%;margin-bottom:3px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:11px">
           <input placeholder="Number (HR 26 AX)" value="${ex.vehicle_number}" data-route="${rt.id}" data-date="${d}" data-f="vehicle_number" style="width:100%;margin-bottom:6px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:11px">
           <div style="border-top:1px solid #eee;padding-top:4px">
-          <input placeholder="Guard naam" value="${ex.guard_name}" data-route="${rt.id}" data-date="${d}" data-f="guard_name" style="width:100%;margin-bottom:3px;padding:4px 6px;border:1px solid #4fc3f7;border-radius:4px;font-size:11px">
+          <input placeholder="Guard name" value="${ex.guard_name}" data-route="${rt.id}" data-date="${d}" data-f="guard_name" style="width:100%;margin-bottom:3px;padding:4px 6px;border:1px solid #4fc3f7;border-radius:4px;font-size:11px">
           <input placeholder="Guard mobile" value="${ex.guard_mobile}" data-route="${rt.id}" data-date="${d}" data-f="guard_mobile" style="width:100%;padding:4px 6px;border:1px solid #4fc3f7;border-radius:4px;font-size:11px">
           </div>
         </td>`;
