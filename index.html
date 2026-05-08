@@ -1287,6 +1287,24 @@ async function loadInvUse() {
   if (items.length) {
     html += `<button class="btn-sm btn-sm-gold" onclick="submitDailyUse()">💾 Save Use</button>`;
   }
+
+  // show already saved use for this date
+  const logs = await fetch(`${API}/api/admin/inventory/log`).then(r => r.json()).catch(() => []);
+  const dayLogs = logs.filter(l => l.log_type === 'use' && String(l.log_date).substring(0,10) === invUseDate);
+  if (dayLogs.length) {
+    html += `<div style="margin-top:20px;font-weight:600;font-size:13px;color:#888;margin-bottom:8px">✅ Already saved for ${fmtDate(invUseDate)}:</div>
+    <div class="card" style="padding:0;overflow:auto">
+    <table><thead><tr><th>Item</th><th>Consumed</th><th>Note</th></tr></thead><tbody>`;
+    dayLogs.forEach(l => {
+      html += `<tr>
+        <td><b>${l.item_name}</b></td>
+        <td style="font-weight:700;color:var(--red)">${l.quantity} ${l.unit}</td>
+        <td style="color:#888;font-size:12px">${l.note||'—'}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
   el.innerHTML = html;
 }
 
@@ -1302,9 +1320,7 @@ async function submitDailyUse() {
     }
   }
   showToast(`✓ ${saved} items ka use save ho gaya!`);
-  loadInvItems();
-  invSubTab = 'items';
-  renderInventory();
+  loadInvUse();
 }
 
 async function loadInvLog() {
