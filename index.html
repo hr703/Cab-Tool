@@ -267,7 +267,7 @@ async function renderAdminRoster() {
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn-sm btn-sm-gold" onclick="openAddRosterModal()">+ Add to Roster</button>
-        <button class="btn-sm btn-sm-outline" onclick="autoAssignWeek('${dates[0]}','${dates[6]}')" style="color:#4fc3f7;border-color:#4fc3f7" title="Routes mein saved driver/guard se sabko assign karo">⚡ Auto-Assign</button>
+        <button class="btn-sm btn-sm-outline" onclick="openWeeklyAssignGrid('${dates[0]}','${dates[6]}')" style="color:#4fc3f7;border-color:#4fc3f7">📋 Weekly Assignment</button>
         <button class="btn-sm btn-sm-outline" onclick="downloadExcel('${dates[0]}','${dates[6]}')" style="color:#4CAF50;border-color:#4CAF50">⬇ Download Excel</button>
       </div>
     </div>
@@ -704,6 +704,93 @@ async function renderAdminCost() {
   document.getElementById('tab-cost').innerHTML = html;
   } catch(err) {
     document.getElementById('tab-cost').innerHTML = `<div style="padding:20px;color:red">Error: ${err.message || err}</div>`;
+  }
+}
+
+async function openWeeklyAssignGrid(dateFrom, dateTo) {
+  const roster = await fetch(`${API}/api/admin/roster?date_from=${dateFrom}&date_to=${dateTo}`).then(r => r.json()).catch(() => []);
+  if (!roster.length) { showToast('Is week mein koi roster entry nahi hai'); return; }
+
+  const dates = [...new Set(roster.map(r => String(r.shift_date).substring(0,10)))].sort();
+  const routes = [...new Map(roster.map(r => [r.route_id, {id: r.route_id, name: r.route_name}])).values()].sort((a,b) => a.name.localeCompare(b.name));
+
+  // Pre-fill: route+date → existing assignment
+  const existing = {};
+  roster.forEach(r => {
+    const key = r.route_id + '|' + String(r.shift_date).substring(0,10);
+    if (!existing[key]) existing[key] = { driver_name: r.driver_name || '', driver_mobile: r.driver_mobile || '', vehicle_type: r.vehicle_type || '', vehicle_number: r.vehicle_number || '', guard_name: r.guard_name || '', guard_mobile: r.guard_mobile || '' };
+  });
+
+  // Build grid
+  let html = `<h3>📋 Weekly Assignment Grid</h3>
+    <p style="color:#888;font-size:12px;margin-bottom:16px">Har route ke liye driver aur guard bharo → Save All karo</p>
+    <div style="overflow:auto">
+    <table style="min-width:700px;font-size:12px">
+    <thead><tr>
+      <th style="min-width:120px">Route</th>`;
+  dates.forEach(d => {
+    html += `<th style="min-width:180px;text-align:center">${fmtDate(d)}</th>`;
+  });
+  html += `</tr></thead><tbody>`;
+
+  routes.forEach(rt => {
+    html += `<tr><td style="font-weight:700;color:var(--primary);vertical-align:top;padding-top:10px">${rt.name}</td>`;
+    dates.forEach(d => {
+      const key = rt.id + '|' + d;
+      const ex = existing[key] || {};
+      const hasRoster = roster.some(r => r.route_id === rt.id && String(r.shift_date).substring(0,10) === d);
+      if (!hasRoster) {
+        html += `<td style="color:#ccc;text-align:center;font-size:11px">—</td>`;
+      } else {
+        html += `<td style="padding:4px">
+          <input placeholder="Driver naam" value="${ex.driver_name}" data-route="${rt.id}" data-date="${d}" data-f="driver_name" style="width:100%;margin-bottom:3px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:11px">
+          <input placeholder="Mobile" value="${ex.driver_mobile}" data-route="${rt.id}" data-date="${d}" data-f="driver_mobile" style="width:100%;margin-bottom:3px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:11px">
+          <input placeholder="Vehicle (e.g. Swift)" value="${ex.vehicle_type}" data-route="${rt.id}" data-date="${d}" data-f="vehicle_type" style="width:100%;margin-bottom:3px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:11px">
+          <input placeholder="Number (HR 26 AX)" value="${ex.vehicle_number}" data-route="${rt.id}" data-date="${d}" data-f="vehicle_number" style="width:100%;margin-bottom:6px;padding:4px 6px;border:1px solid #ddd;border-radius:4px;font-size:11px">
+          <div style="border-top:1px solid #eee;padding-top:4px">
+          <input placeholder="Guard naam" value="${ex.guard_name}" data-route="${rt.id}" data-date="${d}" data-f="guard_name" style="width:100%;margin-bottom:3px;padding:4px 6px;border:1px solid #4fc3f7;border-radius:4px;font-size:11px">
+          <input placeholder="Guard mobile" value="${ex.guard_mobile}" data-route="${rt.id}" data-date="${d}" data-f="guard_mobile" style="width:100%;padding:4px 6px;border:1px solid #4fc3f7;border-radius:4px;font-size:11px">
+          </div>
+        </td>`;
+      }
+    });
+    html += `</tr>`;
+  });
+
+  html += `</tbody></table></div>
+    <div id="modal-err" class="err-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm btn-sm-gold" onclick="submitWeeklyGrid()">💾 Save All</button>
+    </div>`;
+
+  // Use full-width modal
+  const old = document.getElementById('modal-overlay');
+  if (old) old.remove();
+  const div = document.createElement('div');
+  div.className = 'modal-overlay';
+  div.id = 'modal-overlay';
+  div.innerHTML = `<div class="modal" style="width:95vw;max-width:1100px">${html}</div>`;
+  div.addEventListener('click', e => { if (e.target === div) closeModal(); });
+  document.body.appendChild(div);
+}
+
+async function submitWeeklyGrid() {
+  const inputs = document.querySelectorAll('#modal-overlay input[data-route]');
+  const data = {};
+  inputs.forEach(inp => {
+    const key = inp.dataset.route + '|' + inp.dataset.date;
+    if (!data[key]) data[key] = { route_id: parseInt(inp.dataset.route), date: inp.dataset.date };
+    data[key][inp.dataset.f] = inp.value.trim();
+  });
+  const assignments = Object.values(data);
+  const res = await apiPost('/api/admin/bulk-assign', { assignments });
+  if (res.success) {
+    closeModal();
+    showToast(`✓ ${res.cab_assigned} cab + ${res.guard_assigned} guard assigned!`);
+    renderAdminRoster();
+  } else {
+    document.getElementById('modal-err').textContent = res.error || 'Error saving';
   }
 }
 

@@ -657,6 +657,35 @@ class Handler(BaseHTTPRequestHandler):
                 conn.commit()
                 self.send_json({'success': True, 'added': added})
 
+            elif path == '/api/admin/bulk-assign':
+                # assignments: [{date, route_id, driver_name, driver_mobile, vehicle_type, vehicle_number, guard_name, guard_mobile}]
+                assignments = body.get('assignments', [])
+                cab_done = 0; guard_done = 0
+                for a in assignments:
+                    cur.execute('SELECT id FROM roster WHERE route_id=%s AND shift_date=%s', (a['route_id'], a['date']))
+                    roster_ids = [r['id'] for r in cur.fetchall()]
+                    for rid in roster_ids:
+                        if a.get('driver_name','').strip():
+                            cur.execute('''
+                                INSERT INTO cab_assignments (roster_id, vendor_id, driver_name, driver_mobile, vehicle_type, vehicle_number)
+                                VALUES (%s,NULL,%s,%s,%s,%s)
+                                ON CONFLICT (roster_id) DO UPDATE SET
+                                    driver_name=%s, driver_mobile=%s, vehicle_type=%s, vehicle_number=%s, assigned_at=NOW()
+                            ''', (rid, a.get('driver_name',''), a.get('driver_mobile',''), a.get('vehicle_type',''), a.get('vehicle_number',''),
+                                  a.get('driver_name',''), a.get('driver_mobile',''), a.get('vehicle_type',''), a.get('vehicle_number','')))
+                            cab_done += 1
+                        if a.get('guard_name','').strip():
+                            cur.execute('''
+                                INSERT INTO security_assignments (roster_id, vendor_id, guard_name, guard_mobile)
+                                VALUES (%s,NULL,%s,%s)
+                                ON CONFLICT (roster_id) DO UPDATE SET
+                                    guard_name=%s, guard_mobile=%s, assigned_at=NOW()
+                            ''', (rid, a.get('guard_name',''), a.get('guard_mobile',''),
+                                  a.get('guard_name',''), a.get('guard_mobile','')))
+                            guard_done += 1
+                conn.commit()
+                self.send_json({'success': True, 'cab_assigned': cab_done, 'guard_assigned': guard_done})
+
             elif path == '/api/admin/auto-assign':
                 date_from = body.get('date_from')
                 date_to   = body.get('date_to')
