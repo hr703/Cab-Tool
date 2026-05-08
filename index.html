@@ -279,17 +279,21 @@ async function renderAdminRoster() {
     html += `<tr><td colspan="9" style="text-align:center;color:#555;padding:30px">No entries this week. Click "+ Add to Roster"</td></tr>`;
   } else {
     roster.forEach(r => {
-      const cab = r.driver_name ? `<span class="assigned">✓ ${r.driver_name}<br><small style="color:#888">${r.vehicle_type} ${r.vehicle_number}</small></span>` : `<span class="pending-text">Pending</span>`;
-      const guard = r.guard_name ? `<span class="assigned">✓ ${r.guard_name}</span>` : `<span class="pending-text">Pending</span>`;
+      const cab = r.driver_name
+        ? `<span class="assigned">✓ ${r.driver_name}<br><small style="color:#888">${r.vehicle_type} ${r.vehicle_number}</small></span><br><button class="action-btn" style="margin-top:4px;font-size:11px" onclick="adminAssignCab(${r.id},'${r.emp_name}','${r.shift_date}')">Edit</button>`
+        : `<button class="btn-sm btn-sm-gold" style="font-size:11px;padding:4px 10px" onclick="adminAssignCab(${r.id},'${r.emp_name}','${r.shift_date}')">+ Assign Cab</button>`;
+      const guard = r.guard_name
+        ? `<span class="assigned">✓ ${r.guard_name}<br><small style="color:#888">${r.guard_mobile || ''}</small></span><br><button class="action-btn" style="margin-top:4px;font-size:11px" onclick="adminAssignGuard(${r.id},'${r.emp_name}','${r.shift_date}')">Edit</button>`
+        : `<button class="btn-sm btn-sm-outline" style="font-size:11px;padding:4px 10px;color:#4fc3f7;border-color:#4fc3f7" onclick="adminAssignGuard(${r.id},'${r.emp_name}','${r.shift_date}')">+ Assign Guard</button>`;
       html += `<tr>
         <td><b>${fmtDate(r.shift_date)}</b></td>
         <td><b>${r.emp_name}</b><br><small style="color:#666">${r.mobile || ''}</small></td>
         <td style="color:#888;font-size:12px">${r.department || ''}</td>
-        <td><span style="color:var(--gold)">${r.route_name}</span><br><small style="color:#666">${r.pick_time || ''}</small></td>
+        <td><span style="color:var(--primary)">${r.route_name}</span><br><small style="color:#666">${r.pick_time || ''}</small></td>
         <td style="font-size:12px">${r.pick_location || ''}</td>
         <td style="font-size:12px">${cab}</td>
         <td style="font-size:12px">${guard}</td>
-        <td style="color:var(--gold)">₹${(parseFloat(r.cab_cost) || 0).toLocaleString('en-IN')}</td>
+        <td style="color:var(--primary)">₹${(parseFloat(r.cab_cost) || 0).toLocaleString('en-IN')}</td>
         <td><button class="action-btn danger" onclick="deleteRosterEntry(${r.id})">✕</button></td>
       </tr>`;
     });
@@ -625,6 +629,57 @@ async function renderAdminCost() {
   } catch(err) {
     document.getElementById('tab-cost').innerHTML = `<div style="padding:20px;color:red">Error: ${err.message || err}</div>`;
   }
+}
+
+// ── ADMIN ASSIGN (direct from admin panel) ───────────────
+function adminAssignCab(rosterId, empName, shiftDate) {
+  showModal(`
+    <h3>Assign Cab</h3>
+    <div style="margin-bottom:16px;color:#888;font-size:13px">Employee: <b style="color:var(--text)">${empName}</b> &nbsp;|&nbsp; Date: <b style="color:var(--primary)">${shiftDate}</b></div>
+    <div class="two-col">
+      <div class="form-row"><label>Driver Name *</label><input id="ca-dname"></div>
+      <div class="form-row"><label>Driver Mobile *</label><input id="ca-dmobile" placeholder="10-digit"></div>
+    </div>
+    <div class="two-col">
+      <div class="form-row"><label>Vehicle Type</label><input id="ca-vtype" placeholder="e.g. Swift Dzire"></div>
+      <div class="form-row"><label>Vehicle Number</label><input id="ca-vnum" placeholder="e.g. DL 01 AB 1234"></div>
+    </div>
+    <div id="modal-err" class="err-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm btn-sm-gold" onclick="adminSubmitCab(${rosterId})">Save</button>
+    </div>`);
+}
+
+async function adminSubmitCab(rosterId) {
+  const data = { roster_id: rosterId, vendor_id: null, driver_name: document.getElementById('ca-dname').value.trim(), driver_mobile: document.getElementById('ca-dmobile').value.trim(), vehicle_type: document.getElementById('ca-vtype').value.trim(), vehicle_number: document.getElementById('ca-vnum').value.trim() };
+  if (!data.driver_name || !data.driver_mobile) { document.getElementById('modal-err').textContent = 'Driver name and mobile required'; return; }
+  const res = await apiPost('/api/cab/assign', data);
+  if (res.success) { closeModal(); showToast('Cab assigned!'); renderAdminRoster(); }
+  else document.getElementById('modal-err').textContent = res.error || 'Error';
+}
+
+function adminAssignGuard(rosterId, empName, shiftDate) {
+  showModal(`
+    <h3>Assign Security Guard</h3>
+    <div style="margin-bottom:16px;color:#888;font-size:13px">Employee: <b style="color:var(--text)">${empName}</b> &nbsp;|&nbsp; Date: <b style="color:var(--primary)">${shiftDate}</b></div>
+    <div class="two-col">
+      <div class="form-row"><label>Guard Name *</label><input id="sa-gname"></div>
+      <div class="form-row"><label>Guard Mobile *</label><input id="sa-gmobile" placeholder="10-digit"></div>
+    </div>
+    <div id="modal-err" class="err-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-sm btn-sm-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn-sm btn-sm-gold" onclick="adminSubmitGuard(${rosterId})">Save</button>
+    </div>`);
+}
+
+async function adminSubmitGuard(rosterId) {
+  const data = { roster_id: rosterId, vendor_id: null, guard_name: document.getElementById('sa-gname').value.trim(), guard_mobile: document.getElementById('sa-gmobile').value.trim() };
+  if (!data.guard_name || !data.guard_mobile) { document.getElementById('modal-err').textContent = 'Guard name and mobile required'; return; }
+  const res = await apiPost('/api/security/assign', data);
+  if (res.success) { closeModal(); showToast('Guard assigned!'); renderAdminRoster(); }
+  else document.getElementById('modal-err').textContent = res.error || 'Error';
 }
 
 // ── COST SPLIT TAB ────────────────────────────────────────
