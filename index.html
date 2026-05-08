@@ -440,6 +440,103 @@ async function deleteRosterEntry(id) {
 }
 
 // ── ROUTES TAB ──
+async function renderAttendance() {
+  const el = document.getElementById('emp-sub-content');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+      <button class="btn-sm btn-sm-outline" onclick="shiftAttDay(-1)">◀ Prev</button>
+      <input type="date" id="att-date-picker" value="${attendanceDate}" onchange="attendanceDate=this.value;loadAttendance()" style="padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;color:var(--text);background:#fff">
+      <button class="btn-sm btn-sm-outline" onclick="attendanceDate=new Date().toISOString().split('T')[0];loadAttendance()">Today</button>
+      <button class="btn-sm btn-sm-outline" onclick="shiftAttDay(1)">Next ▶</button>
+    </div>
+    <div id="att-content"><div style="color:#888">Loading...</div></div>`;
+  loadAttendance();
+}
+
+function shiftAttDay(n) {
+  const d = new Date(attendanceDate + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  attendanceDate = d.toISOString().split('T')[0];
+  const p = document.getElementById('att-date-picker');
+  if (p) p.value = attendanceDate;
+  loadAttendance();
+}
+
+async function loadAttendance() {
+  const el = document.getElementById('att-content');
+  if (!el) return;
+  const [roster, settings] = await Promise.all([
+    fetch(`${API}/api/admin/roster?date_from=${attendanceDate}&date_to=${attendanceDate}`).then(r => r.json()).catch(() => []),
+    fetch(`${API}/api/admin/settings`).then(r => r.json()).catch(() => ({}))
+  ]);
+  const dayLabel = new Date(attendanceDate + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+
+  // Get saved attendance marks
+  const savedAtt = JSON.parse(settings[`att_${attendanceDate}`] || '{}');
+  const rosterEmpIds = roster.map(r => r.employee_id);
+
+  // Show all employees, mark those in roster as "Scheduled", attendance as Present/Absent
+  const allEmps = employeesCache;
+  const present = allEmps.filter(e => savedAtt[e.id] === 'P').length;
+  const absent  = allEmps.filter(e => savedAtt[e.id] === 'A').length;
+  const marked  = present + absent;
+
+  let html = `
+    <div style="font-size:16px;font-weight:700;color:var(--primary);margin-bottom:16px">${dayLabel}</div>
+    <div class="kpi-row" style="margin-bottom:16px">
+      <div class="kpi"><div class="kpi-label">Total</div><div class="kpi-val">${allEmps.length}</div></div>
+      <div class="kpi"><div class="kpi-label">✅ Present</div><div class="kpi-val" style="color:var(--green)">${present}</div></div>
+      <div class="kpi"><div class="kpi-label">❌ Absent</div><div class="kpi-val" style="color:var(--red)">${absent}</div></div>
+      <div class="kpi"><div class="kpi-label">Scheduled (Cab)</div><div class="kpi-val" style="color:var(--primary)">${rosterEmpIds.length}</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn-sm btn-sm-outline" style="color:var(--green);border-color:var(--green)" onclick="markAllAtt('P','${attendanceDate}')">✅ All Present</button>
+      <button class="btn-sm btn-sm-outline" style="color:var(--red);border-color:var(--red)" onclick="markAllAtt('A','${attendanceDate}')">❌ All Absent</button>
+      <button class="btn-sm btn-sm-gold" onclick="saveAttendance('${attendanceDate}')">💾 Save</button>
+    </div>
+    <div class="card" style="padding:0;overflow:auto">
+    <table><thead><tr><th>Employee</th><th>Department</th><th>Cab Scheduled</th><th>Attendance</th></tr></thead><tbody>`;
+
+  allEmps.forEach(e => {
+    const scheduled = rosterEmpIds.includes(e.id);
+    const att = savedAtt[e.id] || '';
+    html += `<tr>
+      <td><b>${e.emp_name}</b><br><small style="color:#888">${e.mobile || ''}</small></td>
+      <td style="color:#888;font-size:12px">${e.department || ''}</td>
+      <td>${scheduled ? '<span class="badge badge-green">✓ Scheduled</span>' : '<span class="badge badge-gray">—</span>'}</td>
+      <td>
+        <label style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;cursor:pointer">
+          <input type="radio" name="att_${e.id}" value="P" ${att==='P'?'checked':''} style="accent-color:var(--green)"> <span style="color:var(--green);font-weight:600">Present</span>
+        </label>
+        <label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer">
+          <input type="radio" name="att_${e.id}" value="A" ${att==='A'?'checked':''} style="accent-color:var(--red)"> <span style="color:var(--red);font-weight:600">Absent</span>
+        </label>
+      </td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>`;
+  el.innerHTML = html;
+}
+
+function markAllAtt(status, date) {
+  document.querySelectorAll(`input[type=radio][value=${status}]`).forEach(r => r.checked = true);
+}
+
+async function saveAttendance(date) {
+  const attData = {};
+  employeesCache.forEach(e => {
+    const sel = document.querySelector(`input[name="att_${e.id}"]:checked`);
+    if (sel) attData[e.id] = sel.value;
+  });
+  const res = await apiPost('/api/admin/settings', { [`att_${date}`]: JSON.stringify(attData) });
+  if (res.success) {
+    const p = Object.values(attData).filter(v => v === 'P').length;
+    const a = Object.values(attData).filter(v => v === 'A').length;
+    showToast(`✓ Attendance saved! Present: ${p}, Absent: ${a}`);
+    loadAttendance();
+  }
+}
+
 async function renderAdminRoutes() {
   await loadRoutes();
   let html = `
@@ -530,6 +627,7 @@ async function deleteRoute(id) {
 // ── EMPLOYEES TAB ──
 let empSubTab = 'list';
 let snackRegDate = new Date().toISOString().split('T')[0];
+let attendanceDate = new Date().toISOString().split('T')[0];
 
 async function renderAdminEmployees() {
   await loadEmployees();
@@ -537,10 +635,12 @@ async function renderAdminEmployees() {
     <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid var(--border)">
       <button class="tab-btn ${empSubTab==='list'?'active':''}" onclick="empSubTab='list';renderAdminEmployees()">Employees</button>
       <button class="tab-btn ${empSubTab==='snack'?'active':''}" onclick="empSubTab='snack';renderAdminEmployees()">🍜 Snack Register</button>
+      <button class="tab-btn ${empSubTab==='attendance'?'active':''}" onclick="empSubTab='attendance';renderAdminEmployees()">✅ Attendance</button>
     </div>
     <div id="emp-sub-content"></div>`;
   if (empSubTab === 'list') renderEmpList();
-  else renderSnackRegister();
+  else if (empSubTab === 'snack') renderSnackRegister();
+  else renderAttendance();
 }
 
 async function renderEmpList() {
