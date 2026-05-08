@@ -479,7 +479,9 @@ async function loadAttendance() {
   const allEmps = employeesCache;
   const present = allEmps.filter(e => savedAtt[e.id] === 'P').length;
   const absent  = allEmps.filter(e => savedAtt[e.id] === 'A').length;
-  const marked  = present + absent;
+  const wfh     = allEmps.filter(e => savedAtt[e.id] === 'WFH').length;
+  const leave   = allEmps.filter(e => savedAtt[e.id] === 'L').length;
+  const weekoff = allEmps.filter(e => savedAtt[e.id] === 'WO').length;
 
   let html = `
     <div style="font-size:16px;font-weight:700;color:var(--primary);margin-bottom:16px">${dayLabel}</div>
@@ -487,7 +489,9 @@ async function loadAttendance() {
       <div class="kpi"><div class="kpi-label">Total</div><div class="kpi-val">${allEmps.length}</div></div>
       <div class="kpi"><div class="kpi-label">✅ Present</div><div class="kpi-val" style="color:var(--green)">${present}</div></div>
       <div class="kpi"><div class="kpi-label">❌ Absent</div><div class="kpi-val" style="color:var(--red)">${absent}</div></div>
-      <div class="kpi"><div class="kpi-label">Scheduled (Cab)</div><div class="kpi-val" style="color:var(--primary)">${rosterEmpIds.length}</div></div>
+      <div class="kpi"><div class="kpi-label">🏠 WFH</div><div class="kpi-val" style="color:#F59E0B">${wfh}</div></div>
+      <div class="kpi"><div class="kpi-label">🌴 Leave</div><div class="kpi-val" style="color:#06B6D4">${leave}</div></div>
+      <div class="kpi"><div class="kpi-label">🏖️ Week Off</div><div class="kpi-val" style="color:#8B5CF6">${weekoff}</div></div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <button class="btn-sm btn-sm-outline" style="color:var(--green);border-color:var(--green)" onclick="markAllAtt('P','${attendanceDate}')">✅ All Present</button>
@@ -505,16 +509,30 @@ async function loadAttendance() {
       <td style="color:#888;font-size:12px">${e.department || ''}</td>
       <td>${scheduled ? '<span class="badge badge-green">✓ Scheduled</span>' : '<span class="badge badge-gray">—</span>'}</td>
       <td>
-        <select name="att_${e.id}" style="padding:7px 12px;border:1px solid ${att==='P'?'var(--green)':att==='A'?'var(--red)':'var(--border)'};border-radius:6px;font-size:13px;font-weight:600;color:${att==='P'?'var(--green)':att==='A'?'var(--red)':'var(--text2)'};background:#fff;cursor:pointer" onchange="this.style.color=this.value==='P'?'var(--green)':this.value==='A'?'var(--red)':'var(--text2)';this.style.borderColor=this.value==='P'?'var(--green)':this.value==='A'?'var(--red)':'var(--border)'">
+        <select name="att_${e.id}" style="padding:7px 12px;border:1px solid ${attColor(att,'border')};border-radius:6px;font-size:13px;font-weight:600;color:${attColor(att,'text')};background:#fff;cursor:pointer" onchange="applyAttColor(this)">
           <option value="" ${att===''?'selected':''}>-- Select --</option>
-          <option value="P" ${att==='P'?'selected':''}>✅ Present</option>
-          <option value="A" ${att==='A'?'selected':''}>❌ Absent</option>
+          <option value="P"   ${att==='P'  ?'selected':''}>✅ Present</option>
+          <option value="A"   ${att==='A'  ?'selected':''}>❌ Absent</option>
+          <option value="WO"  ${att==='WO' ?'selected':''}>🏖️ Week Off</option>
+          <option value="WFH" ${att==='WFH'?'selected':''}>🏠 Work From Home</option>
+          <option value="L"   ${att==='L'  ?'selected':''}>🌴 Leave</option>
         </select>
       </td>
     </tr>`;
   });
   html += `</tbody></table></div>`;
   el.innerHTML = html;
+}
+
+function attColor(val, type) {
+  const map = { P: ['var(--green)','var(--green)'], A: ['var(--red)','var(--red)'], WO: ['#8B5CF6','#8B5CF6'], WFH: ['#F59E0B','#F59E0B'], L: ['#06B6D4','#06B6D4'] };
+  const colors = map[val] || ['var(--border)','var(--text2)'];
+  return type === 'border' ? colors[0] : colors[1];
+}
+
+function applyAttColor(sel) {
+  sel.style.color = attColor(sel.value, 'text');
+  sel.style.borderColor = attColor(sel.value, 'border');
 }
 
 function markAllAtt(status, date) {
