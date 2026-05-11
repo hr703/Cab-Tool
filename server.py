@@ -503,14 +503,40 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({r['key']: r['value'] for r in cur.fetchall()})
 
             elif path == '/api/admin/inventory':
-                cur.execute('''
-                    SELECT i.*,
-                        COALESCE(SUM(CASE WHEN l.log_type='add'  THEN l.quantity ELSE 0 END), 0) AS total_purchased,
-                        COALESCE(SUM(CASE WHEN l.log_type='use'  THEN l.quantity ELSE 0 END), 0) AS total_used
-                    FROM inventory_items i
-                    LEFT JOIN inventory_log l ON l.item_id = i.id
-                    GROUP BY i.id ORDER BY i.item_name
-                ''')
+                q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                month = q.get('month', [None])[0]  # expects YYYY-MM
+                if month:
+                    import calendar as _cal
+                    try:
+                        yr, mo = int(month[:4]), int(month[5:7])
+                        m_start = f"{yr:04d}-{mo:02d}-01"
+                        last_day = _cal.monthrange(yr, mo)[1]
+                        m_end = f"{yr:04d}-{mo:02d}-{last_day:02d}"
+                    except Exception:
+                        month = None
+                if month:
+                    cur.execute('''
+                        SELECT i.*,
+                            COALESCE(SUM(CASE WHEN l.log_type='add'  THEN l.quantity ELSE 0 END), 0) AS total_purchased,
+                            COALESCE(SUM(CASE WHEN l.log_type='use'  THEN l.quantity ELSE 0 END), 0) AS total_used,
+                            COALESCE(SUM(CASE WHEN l.log_type='add'  AND l.log_date < %s THEN l.quantity ELSE 0 END), 0)
+                            - COALESCE(SUM(CASE WHEN l.log_type='use' AND l.log_date < %s THEN l.quantity ELSE 0 END), 0) AS opening_qty,
+                            COALESCE(SUM(CASE WHEN l.log_type='add'  AND l.log_date BETWEEN %s AND %s THEN l.quantity ELSE 0 END), 0) AS add_qty_month,
+                            COALESCE(SUM(CASE WHEN l.log_type='add'  AND l.log_date BETWEEN %s AND %s THEN l.quantity * COALESCE(l.cost_per_unit, i.cost_per_unit, 0) ELSE 0 END), 0) AS add_amount_month,
+                            COALESCE(SUM(CASE WHEN l.log_type='use'  AND l.log_date BETWEEN %s AND %s THEN l.quantity ELSE 0 END), 0) AS consumed_month
+                        FROM inventory_items i
+                        LEFT JOIN inventory_log l ON l.item_id = i.id
+                        GROUP BY i.id ORDER BY i.item_name
+                    ''', (m_start, m_start, m_start, m_end, m_start, m_end, m_start, m_end))
+                else:
+                    cur.execute('''
+                        SELECT i.*,
+                            COALESCE(SUM(CASE WHEN l.log_type='add'  THEN l.quantity ELSE 0 END), 0) AS total_purchased,
+                            COALESCE(SUM(CASE WHEN l.log_type='use'  THEN l.quantity ELSE 0 END), 0) AS total_used
+                        FROM inventory_items i
+                        LEFT JOIN inventory_log l ON l.item_id = i.id
+                        GROUP BY i.id ORDER BY i.item_name
+                    ''')
                 self.send_json([dict(r) for r in cur.fetchall()])
 
             elif path == '/api/admin/inventory/log':

@@ -1149,9 +1149,18 @@ async function renderInventory() {
 }
 
 async function loadInvItems() {
-  const items = await fetch(`${API}/api/admin/inventory`).then(r => r.json()).catch(() => []);
+  // Month picker default = current month
+  const now = new Date();
+  const defMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const selMonth = window._invMonth || defMonth;
+
+  const items = await fetch(`${API}/api/admin/inventory?month=${selMonth}`).then(r => r.json()).catch(() => []);
   const el = document.getElementById('inv-content');
   const lowStock = items.filter(i => parseFloat(i.current_stock) <= parseFloat(i.min_stock));
+
+  // Month label
+  const [yr, mo] = selMonth.split('-');
+  const monthLabel = new Date(yr, mo-1, 1).toLocaleString('en-IN', {month:'long', year:'numeric'});
 
   let html = ``;
 
@@ -1161,26 +1170,68 @@ async function loadInvItems() {
     </div>`;
   }
 
+  // Month filter bar
+  html += `<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <label style="font-weight:600;color:var(--primary)">📅 Month:</label>
+    <input type="month" value="${selMonth}" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px"
+      onchange="window._invMonth=this.value;loadInvItems()">
+    <span style="font-size:13px;color:#888">${monthLabel} — Stock Register</span>
+  </div>`;
+
   html += `<div class="card" style="padding:0;overflow:auto">
-  <table><thead><tr><th>Item</th><th>Unit</th><th>Total Purchased</th><th>Consumed</th><th>Balance</th><th>Min Stock</th><th>Last Purchase</th><th>Status</th><th></th></tr></thead><tbody>`;
+  <table>
+    <thead>
+      <tr style="background:#f0f4ff">
+        <th rowspan="2" style="vertical-align:middle">Item</th>
+        <th rowspan="2" style="vertical-align:middle">Unit</th>
+        <th colspan="2" style="text-align:center;background:#e8f5e9;color:#2e7d32;border-bottom:1px solid #c8e6c9">Opening Balance</th>
+        <th colspan="2" style="text-align:center;background:#e3f2fd;color:#1565c0;border-bottom:1px solid #bbdefb">Add This Month</th>
+        <th colspan="2" style="text-align:center;background:#fce4ec;color:#c62828;border-bottom:1px solid #f8bbd0">Closing Balance</th>
+        <th rowspan="2" style="vertical-align:middle">Min Stock</th>
+        <th rowspan="2" style="vertical-align:middle">Status</th>
+        <th rowspan="2" style="vertical-align:middle"></th>
+      </tr>
+      <tr>
+        <th style="background:#e8f5e9;color:#2e7d32;font-size:11px">Qty</th>
+        <th style="background:#e8f5e9;color:#2e7d32;font-size:11px">Amount (₹)</th>
+        <th style="background:#e3f2fd;color:#1565c0;font-size:11px">Qty</th>
+        <th style="background:#e3f2fd;color:#1565c0;font-size:11px">Amount (₹)</th>
+        <th style="background:#fce4ec;color:#c62828;font-size:11px">Qty</th>
+        <th style="background:#fce4ec;color:#c62828;font-size:11px">Amount (₹)</th>
+      </tr>
+    </thead>
+    <tbody>`;
 
   if (!items.length) {
-    html += `<tr><td colspan="9" style="text-align:center;color:#888;padding:30px">No items found. Add items via Purchases tab.</td></tr>`;
+    html += `<tr><td colspan="11" style="text-align:center;color:#888;padding:30px">No items found. Add items via Purchases tab.</td></tr>`;
   } else {
     items.forEach(i => {
+      const cpu      = parseFloat(i.cost_per_unit || 0);
+      const openQty  = parseFloat(i.opening_qty  || 0);
+      const addQty   = parseFloat(i.add_qty_month || 0);
+      const addAmt   = parseFloat(i.add_amount_month || 0);
+      const closQty  = openQty + addQty - parseFloat(i.consumed_month || 0);
+      const openAmt  = parseFloat((openQty * cpu).toFixed(2));
+      const closAmt  = parseFloat((closQty * cpu).toFixed(2));
+
       const stock = parseFloat(i.current_stock);
       const minS  = parseFloat(i.min_stock);
       const status = stock <= 0 ? `<span class="badge badge-red">Out of Stock</span>`
         : stock <= minS ? `<span class="badge badge-yellow">⚠️ Low</span>`
         : `<span class="badge badge-green">✓ OK</span>`;
+
+      const fmt = v => v % 1 === 0 ? v : parseFloat(v.toFixed(3));
+
       html += `<tr>
         <td><b>${i.item_name}</b></td>
-        <td style="color:#888">${i.unit}</td>
-        <td style="font-weight:700;color:#4fc3f7">${parseFloat(i.total_purchased||0)}</td>
-        <td style="font-weight:700;color:var(--red)">${parseFloat(i.total_used||0)}</td>
-        <td style="font-weight:700;font-size:15px;color:${stock<=minS?'var(--red)':'var(--green)'}">${stock}</td>
+        <td style="color:#888;font-size:12px">${i.unit}</td>
+        <td style="font-weight:700;color:#2e7d32;background:#f9fbe7">${fmt(openQty)}</td>
+        <td style="color:#2e7d32;background:#f9fbe7">₹${openAmt.toLocaleString('en-IN')}</td>
+        <td style="font-weight:700;color:#1565c0;background:#f3f8ff">${fmt(addQty)}</td>
+        <td style="color:#1565c0;background:#f3f8ff">₹${addAmt.toLocaleString('en-IN')}</td>
+        <td style="font-weight:700;font-size:15px;color:${closQty<=minS?'var(--red)':'#c62828'};background:#fff5f7">${fmt(closQty)}</td>
+        <td style="color:#c62828;background:#fff5f7">₹${closAmt.toLocaleString('en-IN')}</td>
         <td style="color:#888">${minS}</td>
-        <td style="color:#888;font-size:12px">${i.purchase_date ? fmtDate(i.purchase_date) : '—'}</td>
         <td>${status}</td>
         <td>
           <button class="action-btn" onclick='openInvModal(${JSON.stringify(i)})'>Edit</button>
