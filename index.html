@@ -1186,33 +1186,43 @@ async function loadInvItems() {
         <th rowspan="2" style="vertical-align:middle">Unit</th>
         <th colspan="2" style="text-align:center;background:#e8f5e9;color:#2e7d32;border-bottom:1px solid #c8e6c9">Opening Balance</th>
         <th colspan="2" style="text-align:center;background:#e3f2fd;color:#1565c0;border-bottom:1px solid #bbdefb">Add This Month</th>
+        <th colspan="2" style="text-align:center;background:#e8eaf6;color:#283593;border-bottom:1px solid #c5cae9">Total (Open+Add)</th>
+        <th colspan="2" style="text-align:center;background:#fff3e0;color:#e65100;border-bottom:1px solid #ffe0b2">Consumed This Month</th>
         <th colspan="2" style="text-align:center;background:#fce4ec;color:#c62828;border-bottom:1px solid #f8bbd0">Closing Balance</th>
-        <th rowspan="2" style="vertical-align:middle">Min Stock</th>
+        <th rowspan="2" style="vertical-align:middle">Min</th>
         <th rowspan="2" style="vertical-align:middle">Status</th>
         <th rowspan="2" style="vertical-align:middle"></th>
       </tr>
       <tr>
         <th style="background:#e8f5e9;color:#2e7d32;font-size:11px">Qty</th>
-        <th style="background:#e8f5e9;color:#2e7d32;font-size:11px">Amount (₹)</th>
+        <th style="background:#e8f5e9;color:#2e7d32;font-size:11px">₹</th>
         <th style="background:#e3f2fd;color:#1565c0;font-size:11px">Qty</th>
-        <th style="background:#e3f2fd;color:#1565c0;font-size:11px">Amount (₹)</th>
+        <th style="background:#e3f2fd;color:#1565c0;font-size:11px">₹</th>
+        <th style="background:#e8eaf6;color:#283593;font-size:11px">Qty</th>
+        <th style="background:#e8eaf6;color:#283593;font-size:11px">₹</th>
+        <th style="background:#fff3e0;color:#e65100;font-size:11px">Qty</th>
+        <th style="background:#fff3e0;color:#e65100;font-size:11px">₹</th>
         <th style="background:#fce4ec;color:#c62828;font-size:11px">Qty</th>
-        <th style="background:#fce4ec;color:#c62828;font-size:11px">Amount (₹)</th>
+        <th style="background:#fce4ec;color:#c62828;font-size:11px">₹</th>
       </tr>
     </thead>
     <tbody>`;
 
   if (!items.length) {
-    html += `<tr><td colspan="11" style="text-align:center;color:#888;padding:30px">No items found. Add items via Purchases tab.</td></tr>`;
+    html += `<tr><td colspan="15" style="text-align:center;color:#888;padding:30px">No items found. Add items via Purchases tab.</td></tr>`;
   } else {
     items.forEach(i => {
-      const cpu      = parseFloat(i.cost_per_unit || 0);
-      const openQty  = parseFloat(i.opening_qty  || 0);
-      const addQty   = parseFloat(i.add_qty_month || 0);
-      const addAmt   = parseFloat(i.add_amount_month || 0);
-      const closQty  = openQty + addQty - parseFloat(i.consumed_month || 0);
-      const openAmt  = parseFloat((openQty * cpu).toFixed(2));
-      const closAmt  = parseFloat((closQty * cpu).toFixed(2));
+      const cpu       = parseFloat(i.cost_per_unit || 0);
+      const openQty   = parseFloat(i.opening_qty   || 0);
+      const addQty    = parseFloat(i.add_qty_month  || 0);
+      const addAmt    = parseFloat(i.add_amount_month || 0);
+      const consQty   = parseFloat(i.consumed_month || 0);
+      const totalQty  = openQty + addQty;
+      const closQty   = totalQty - consQty;
+      const openAmt   = parseFloat((openQty  * cpu).toFixed(2));
+      const totalAmt  = parseFloat((totalQty * cpu).toFixed(2));
+      const consAmt   = parseFloat((consQty  * cpu).toFixed(2));
+      const closAmt   = parseFloat((closQty  * cpu).toFixed(2));
 
       const stock = parseFloat(i.current_stock);
       const minS  = parseFloat(i.min_stock);
@@ -1221,17 +1231,22 @@ async function loadInvItems() {
         : `<span class="badge badge-green">✓ OK</span>`;
 
       const fmt = v => v % 1 === 0 ? v : parseFloat(v.toFixed(3));
+      const fmtAmt = v => v > 0 ? `₹${v.toLocaleString('en-IN')}` : '—';
 
       html += `<tr>
         <td><b>${i.item_name}</b></td>
         <td style="color:#888;font-size:12px">${i.unit}</td>
         <td style="font-weight:700;color:#2e7d32;background:#f9fbe7">${fmt(openQty)}</td>
-        <td style="color:#2e7d32;background:#f9fbe7">₹${openAmt.toLocaleString('en-IN')}</td>
+        <td style="color:#2e7d32;background:#f9fbe7;font-size:12px">${fmtAmt(openAmt)}</td>
         <td style="font-weight:700;color:#1565c0;background:#f3f8ff">${fmt(addQty)}</td>
-        <td style="color:#1565c0;background:#f3f8ff">₹${addAmt.toLocaleString('en-IN')}</td>
+        <td style="color:#1565c0;background:#f3f8ff;font-size:12px">${fmtAmt(addAmt)}</td>
+        <td style="font-weight:700;color:#283593;background:#f0f1fa">${fmt(totalQty)}</td>
+        <td style="color:#283593;background:#f0f1fa;font-size:12px">${fmtAmt(totalAmt)}</td>
+        <td style="font-weight:700;color:#e65100;background:#fff8f0">${fmt(consQty)}</td>
+        <td style="color:#e65100;background:#fff8f0;font-size:12px">${fmtAmt(consAmt)}</td>
         <td style="font-weight:700;font-size:15px;color:${closQty<=minS?'var(--red)':'#c62828'};background:#fff5f7">${fmt(closQty)}</td>
-        <td style="color:#c62828;background:#fff5f7">₹${closAmt.toLocaleString('en-IN')}</td>
-        <td style="color:#888">${minS}</td>
+        <td style="color:#c62828;background:#fff5f7;font-size:12px">${fmtAmt(closAmt)}</td>
+        <td style="color:#888;font-size:12px">${minS}</td>
         <td>${status}</td>
         <td>
           <button class="action-btn" onclick='openInvModal(${JSON.stringify(i)})'>Edit</button>
